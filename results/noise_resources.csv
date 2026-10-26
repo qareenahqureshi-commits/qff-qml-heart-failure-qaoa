@@ -1,0 +1,10 @@
+k,backend,qubits,physical_qubits,qaoa_depth_p,n_parameters,circuit_depth,two_qubit_gates,total_gates,shots_per_eval
+2,fake_torino,11,133,1,2,406,232,1029,2000
+2,fake_torino,11,133,2,4,709,452,2016,2000
+2,fake_torino,11,133,3,6,1079,676,2914,2000
+3,fake_torino,11,133,1,2,406,232,1029,2000
+3,fake_torino,11,133,2,4,709,452,2016,2000
+3,fake_torino,11,133,3,6,1079,676,2914,2000
+4,fake_torino,11,133,1,2,406,232,1029,2000
+4,fake_torino,11,133,2,4,709,452,2016,2000
+4,fake_torino,11,133,3,6,1079,676,2914,2000

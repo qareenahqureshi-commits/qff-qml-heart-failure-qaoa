@@ -1,0 +1,7 @@
+variant,k,alpha,E_opt,E_max,n_within_1pct,optimum
+mi,2,0.875,-0.1378713188024645,1.5204726191838334,6,ejection_fraction+serum_creatinine
+mi,3,0.96875,-0.23649334185311705,0.0527272904750227,2,age+ejection_fraction+serum_creatinine
+mi,4,0.98438,-0.2910018855591333,0.004453713065887266,6,age+ejection_fraction+serum_creatinine+serum_sodium
+fisher,2,0.5,-0.8847211843692941,7.279295776607398,2,ejection_fraction+serum_creatinine
+fisher,3,0.75,-1.6508365399467153,2.1936216940995275,1,age+ejection_fraction+serum_creatinine
+fisher,4,0.875,-2.233515936123597,0.9023587307572593,2,age+ejection_fraction+serum_creatinine+serum_sodium

@@ -1,0 +1,10 @@
+numpy>=1.26
+pandas>=2.1
+scikit-learn>=1.4
+scipy>=1.11
+matplotlib>=3.8
+qiskit>=1.2
+qiskit-aer>=0.15
+qiskit-optimization>=0.6
+qiskit-ibm-runtime>=0.30
+pytest>=8

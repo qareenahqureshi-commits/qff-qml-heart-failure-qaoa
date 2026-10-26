@@ -1,0 +1,5 @@
+features,k,model,MCC,F1,accuracy,TPR,TNR,PR_AUC,ROC_AUC,MCC_std,MCC_ci95
+age+anaemia+creatinine_phosphokinase+diabetes+ejection_fraction+high_blood_pressure+platelets+serum_creatinine+serum_sodium+sex+smoking,11,gradient_boosting,0.346,0.528,0.726,0.489,0.836,0.6,0.745,0.115,0.023
+age+anaemia+creatinine_phosphokinase+diabetes+ejection_fraction+high_blood_pressure+platelets+serum_creatinine+serum_sodium+sex+smoking,11,logistic_regression,0.338,0.497,0.732,0.427,0.873,0.61,0.752,0.112,0.022
+age+anaemia+creatinine_phosphokinase+diabetes+ejection_fraction+high_blood_pressure+platelets+serum_creatinine+serum_sodium+sex+smoking,11,random_forest,0.365,0.529,0.738,0.472,0.861,0.635,0.782,0.112,0.022
+age+anaemia+creatinine_phosphokinase+diabetes+ejection_fraction+high_blood_pressure+platelets+serum_creatinine+serum_sodium+sex+smoking,11,svm_rbf,0.32,0.485,0.725,0.415,0.869,0.587,0.754,0.118,0.023

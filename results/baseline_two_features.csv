@@ -1,0 +1,5 @@
+features,k,model,MCC,F1,accuracy,TPR,TNR,PR_AUC,ROC_AUC,MCC_std,MCC_ci95
+serum_creatinine+ejection_fraction,2,gradient_boosting,0.381,0.537,0.745,0.476,0.87,0.651,0.761,0.112,0.022
+serum_creatinine+ejection_fraction,2,logistic_regression,0.356,0.446,0.746,0.329,0.939,0.629,0.75,0.119,0.023
+serum_creatinine+ejection_fraction,2,random_forest,0.399,0.581,0.741,0.57,0.82,0.667,0.796,0.113,0.022
+serum_creatinine+ejection_fraction,2,svm_rbf,0.349,0.504,0.736,0.429,0.878,0.635,0.751,0.115,0.022
