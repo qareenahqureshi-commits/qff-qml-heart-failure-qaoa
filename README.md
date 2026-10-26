@@ -2,6 +2,8 @@
 
 **KU QCI Qiskit Fall Fest 2026 — Quantum Machine Learning for Healthcare track**
 
+**▶ Live interactive demo:** https://qareenahqureshi-commits.github.io/qff-qml-heart-failure-qaoa/ — 3D digital-twin patient, live QAOA qubit register, circuit diagram and the landscape of all 165 panels (source: [`docs/index.html`](docs/index.html)).
+
 > Which minimal panel of routine clinical measurements predicts death in heart-failure patients?
 > We formulate panel selection as a relevance–redundancy QUBO, solve it with QAOA in Qiskit,
 > and compare it — on identical data, splits, classifiers and metrics — against exhaustive search,
@@ -328,6 +330,7 @@ scripts/03_downstream.py   → results/downstream*.csv
 scripts/04_figures.py      → results/figures/*.png
 scripts/05_noise.py        → results/noise*.csv            (fake_torino, ≈ 40 min)
 scripts/06_select_k.py     → results/select_k.csv          (nested CV)
+docs/index.html            interactive 3D explainer (GitHub Pages site)
 tests/test_core.py         6 soundness tests: dataset, α-search gives exactly k, k=2 optimum = published
                            panel, Ising mapping exact on all 2048 basis states, SA/tabu reach optimum, QAOA runs
 ```
