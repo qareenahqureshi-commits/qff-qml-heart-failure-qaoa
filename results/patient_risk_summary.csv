@@ -1,0 +1,4 @@
+panel,features,cost_usd,roc_auc,mcc_at_0.5,flagged_medium_or_high,deaths,deaths_flagged,survivors_flagged,high
+echo,age+ejection_fraction+serum_creatinine,202.42,0.8241738505747127,0.398925015294516,140,96,80,60,84
+no_echo,age+serum_creatinine+serum_sodium,4.57,0.7238043924466337,0.35197511799711023,148,96,66,82,67
+all11,age+anaemia+creatinine_phosphokinase+diabetes+ejection_fraction+high_blood_pressure+platelets+serum_creatinine+serum_sodium+sex+smoking,210.13,0.7965158045977011,0.356951346493702,150,96,78,72,71

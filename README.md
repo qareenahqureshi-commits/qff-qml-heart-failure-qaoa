@@ -2,17 +2,17 @@
 
 **KU QCI Qiskit Fall Fest 2026, Quantum Machine Learning for Healthcare track**
 
-**▶ Live interactive demo:** https://qareenahqureshi-commits.github.io/qff-qml-heart-failure-qaoa/ (3D digital twin patient, live QAOA qubit register, circuit diagram and the landscape of all 165 panels; source: [`docs/index.html`](docs/index.html)).
+**▶ HeartPanel, the live product prototype:** https://qareenahqureshi-commits.github.io/qff-qml-heart-failure-qaoa/ (patient worklist, clinical review, panel optimiser, clinic profiles, evidence, pilot and assurance pages). The **quantum engine** page ([`docs/engine.html`](docs/engine.html)) shows the 3D digital twin, the live QAOA register, the circuit and the landscape of all 165 panels. Worklist scores: `scripts/11_patient_risk.py`.
 
 ## Abstract
 
-Which few routine measurements best predict death in heart failure? We turned that question into a QUBO and solved it with QAOA in Qiskit (COBYLA, 2000 shots, 10 seeds).
+HeartPanel picks the cheapest set of routine tests that still predicts death in heart failure, for the equipment a clinic actually has. It then scores every patient with that panel and queues the riskiest for a clinician to review. A quantum optimiser chooses the panel: we wrote panel selection as a QUBO and solved it with QAOA in Qiskit (COBYLA, 2000 shots, 10 seeds).
 
 The data is the UCI Heart Failure Clinical Records set: 299 patients and 11 features, so 11 qubits. The score rewards measurements that separate deaths from survivors and penalises overlap between them (Mücke et al. 2023, plus a Fisher/covariance variant). QAOA found the best three-measurement panel, age, ejection fraction and serum creatinine, in every seed. We checked that against brute force over all 165 panels.
 
 A random forest on those three numbers scores MCC 0.430 ± 0.108. The published two-feature panel gets 0.398 and all 11 features get 0.365. On 299 patients those gaps aren't significant (corrected p = 0.57 and 0.23), but the panel does beat greedy mRMR (p = 0.004). With panel size chosen by nested CV, so no test leakage, the MCC is 0.391.
 
-Adding test prices to the QUBO answers a practical question. If there's no echo, the best panel is age, serum creatinine and serum sodium, for $4.57 (MCC 0.317).
+Adding test prices to the QUBO answers a practical question. If there's no echo, the best panel is age, serum creatinine and serum sodium, for $4.57 (MCC 0.317). Scored out-of-fold, the echo panel flags 80 of the 96 deaths and the $4.57 panel flags 66 (AUC 0.82 and 0.72).
 
 We also tried CVaR, INTERP and a Dicke + XY mixer. INTERP helped most: 28% of shots hit the optimum at k = 3, p = 3, which is 46 times random. A noise study on a simulated IBM Heron chip says p = 1 is the depth to use on hardware. We didn't get a hardware allocation during the event, so that run is still open.
 

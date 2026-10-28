@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Quantum (QAOA) feature selection for heart-failure survival — interactive 3D explainer, KU QCI Qiskit Fall Fest 2026.">
+<title>HeartPanel Quantum Engine</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ECG chart paper as the ground; each 3D scene sits on it like a monitor window. Story in serif, numbers in mono. */
+:root{
+  --paper:#fbf5f3; --grid:#f0d6d2; --grid-major:#e7bdb7;
+  --ink:#1c2230; --ink-soft:#4f5769; --rule:#dccbc8;
+  --ecg:#c4222f; --quantum:#1d6a86; --quantum-soft:#d6e8ef; --gold:#c08a1e;
+  --sheet:#fffdfc; --stage:#f6eeec; --ok:#2f7d4f; --warn:#b7791f; --crit:#b4232f;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#13161d; --grid:#1d2029; --grid-major:#272a35;
+  --ink:#ece7e5; --ink-soft:#a9aebc; --rule:#323645;
+  --ecg:#ff5a62; --quantum:#5cc2e3; --quantum-soft:#1b3340; --gold:#f0b94a;
+  --sheet:#191d26; --stage:#10131a; --ok:#5fc48a; --warn:#e3a94a; --crit:#ff6b6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#13161d; --grid:#1d2029; --grid-major:#272a35;
+  --ink:#ece7e5; --ink-soft:#a9aebc; --rule:#323645;
+  --ecg:#ff5a62; --quantum:#5cc2e3; --quantum-soft:#1b3340; --gold:#f0b94a;
+  --sheet:#191d26; --stage:#10131a; --ok:#5fc48a; --warn:#e3a94a; --crit:#ff6b6b; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;
+  background-image:linear-gradient(var(--grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--grid-major) 1px,transparent 1px),linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:100px 100px,100px 100px,20px 20px,20px 20px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px;display:flex;flex-direction:column;gap:36px}
+h1,h2,h3{font-family:var(--display);line-height:1.06;text-wrap:balance;margin:0}
+h1{font-size:clamp(2.1rem,5vw,3.6rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.55rem,3vw,2.2rem);font-weight:700;letter-spacing:-.01em}
+h3{font-size:1.08rem;font-weight:700}
+p{margin:0;max-width:65ch}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ecg)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-soft)}
+a{color:var(--quantum)}
+:focus-visible{outline:2px solid var(--quantum);outline-offset:2px}
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:clamp(16px,2.6vw,30px);display:flex;flex-direction:column;gap:16px}
+
+/* stages (3D canvases) */
+.stage{position:relative;background:radial-gradient(120% 90% at 50% 40%,var(--sheet),var(--stage));border:1px solid var(--rule);border-radius:6px;overflow:hidden;touch-action:pan-y}
+.stage canvas{display:block;width:100%;height:100%;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.hint{position:absolute;left:12px;bottom:10px;font-family:var(--mono);font-size:.7rem;color:var(--ink-soft);pointer-events:none;letter-spacing:.04em}
+.tag{position:absolute;font-family:var(--mono);font-size:.72rem;color:var(--ink);pointer-events:none;white-space:nowrap;transform:translate(-50%,-50%);text-shadow:0 0 4px var(--sheet),0 0 8px var(--sheet)}
+.tag.on{color:var(--ecg);font-weight:500}
+.tip{position:absolute;pointer-events:none;background:var(--sheet);border:1px solid var(--rule);border-radius:4px;padding:6px 9px;font-family:var(--mono);font-size:.74rem;line-height:1.4;max-width:240px;box-shadow:0 4px 18px rgba(0,0,0,.12)}
+
+/* hero / twin */
+.hero{display:grid;grid-template-columns:1fr 1.25fr;gap:24px;align-items:stretch}
+.hero > *{min-width:0}
+.hero-left{display:flex;flex-direction:column;gap:16px;justify-content:center}
+#twinStage{min-height:520px}
+.ctl{display:flex;flex-direction:column;gap:3px}
+.ctl label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.82rem}
+.ctl label b{font-weight:500;font-variant-numeric:tabular-nums}
+.ctl small{color:var(--ink-soft);font-size:.8rem;line-height:1.35}
+input[type=range]{width:100%;accent-color:var(--ecg)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font-family:var(--mono);font-size:.8rem;border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:4px;padding:7px 12px;cursor:pointer}
+button:hover{background:var(--ink);color:var(--sheet)}
+button.primary{background:var(--quantum);border-color:var(--quantum);color:var(--sheet);font-weight:500}
+button.primary:hover{filter:brightness(1.1);background:var(--quantum);color:var(--sheet)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+button:disabled{opacity:.45;cursor:default}
+.riskcard{position:absolute;right:12px;top:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:170px}
+.riskcard span{font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+#riskval{font-family:var(--mono);font-size:2rem;font-weight:500;line-height:1;font-variant-numeric:tabular-nums}
+.pill{align-self:flex-start;font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid currentColor}
+.vitals{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:2px;font-family:var(--mono);font-size:.72rem;color:var(--ink-soft)}
+.vitals b{color:var(--ink);font-weight:500}
+.cohort{text-transform:none!important;letter-spacing:0!important}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.kpi{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi b{font-family:var(--mono);font-size:clamp(1.6rem,3.4vw,2.3rem);font-weight:500;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi span{font-size:.9rem;color:var(--ink-soft)}
+.why{font-size:.95rem;border-left:3px solid var(--quantum);padding-left:12px;max-width:none}
+.echo{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.echo .panel{font-family:var(--display);font-size:1.35rem;font-weight:700;line-height:1.2}
+.echo dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-family:var(--mono);font-size:.88rem}
+.echo dt{color:var(--ink-soft)}.echo dd{margin:0;font-variant-numeric:tabular-nums}
+@media (max-width:700px){.kpis,.echo{grid-template-columns:1fr}}
+.backbar{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;font-family:var(--mono);font-size:.82rem}
+.disclaim{font-size:.8rem;color:var(--ink-soft)}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.step{display:flex;flex-direction:column;gap:5px;padding-top:10px;border-top:2px solid var(--rule);min-width:0}
+.step .n{font-family:var(--mono);font-size:.76rem;color:var(--ecg)}
+.step p{font-size:.93rem}
+
+/* register */
+.reg{display:grid;grid-template-columns:1.35fr 1fr;gap:20px}
+.reg > *{min-width:0}
+#regStage{min-height:470px}
+.side{display:flex;flex-direction:column;gap:12px}
+.score{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.score div{border:1px solid var(--rule);border-radius:4px;padding:8px 10px;display:flex;flex-direction:column;min-width:0}
+.score b{font-family:var(--mono);font-size:1.2rem;font-weight:500;font-variant-numeric:tabular-nums}
+.score span{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+#selname{font-size:.86rem!important;line-height:1.3}
+.shots{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:.8rem}
+.shots b{font-size:1.4rem;font-weight:500;font-variant-numeric:tabular-nums}
+.bars{display:flex;flex-direction:column;gap:5px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) 90px 44px;gap:8px;align-items:center;font-family:var(--mono);font-size:.74rem}
+.bar .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .track{display:block;height:11px;background:var(--quantum-soft);border-radius:2px;overflow:hidden}
+.bar .fill{display:block;height:100%;width:0;background:var(--quantum);transition:width .15s linear}
+.bar.opt .lbl{color:var(--ecg);font-weight:500}
+.bar.opt .fill{background:var(--ecg)}
+.bar .pc{text-align:right;font-variant-numeric:tabular-nums}
+
+/* landscape */
+#landStage{height:480px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-family:var(--mono);font-size:.74rem;color:var(--ink-soft)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+
+/* charts */
+.charts{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.charts > *{min-width:0}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{font-family:var(--mono);font-size:10.5px;fill:var(--ink)}
+.chart .soft{fill:var(--ink-soft)}
+.claims{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.claims div{display:flex;flex-direction:column;gap:6px}
+.claims ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
+.foot{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;font-family:var(--mono);font-size:.78rem;color:var(--ink-soft)}
+.foot > *{min-width:0;overflow-wrap:anywhere}
+
+.jump{display:flex;flex-wrap:wrap;gap:8px}
+.jump a{font-family:var(--mono);font-size:.76rem;text-decoration:none;color:var(--ink);border-bottom:1px solid var(--rule);padding-bottom:1px}
+.jump a:hover{color:var(--ecg);border-color:var(--ecg)}
+.ecgstrip{position:absolute;left:0;right:0;bottom:30px;height:64px;pointer-events:none}
+.drivers{display:flex;flex-direction:column;gap:6px;border:1px solid var(--rule);border-radius:4px;padding:10px 12px}
+.drivers h3{font-size:.9rem}
+.drv{display:grid;grid-template-columns:minmax(150px,auto) minmax(60px,1fr) 58px;gap:8px;align-items:center;font-family:var(--mono);font-size:.74rem}
+.drv .axis{position:relative;height:12px;background:linear-gradient(90deg,transparent calc(50% - .5px),var(--rule) calc(50% - .5px),var(--rule) calc(50% + .5px),transparent calc(50% + .5px))}
+.drv .axis i{position:absolute;top:1px;height:10px;border-radius:2px;transition:left .25s,width .25s}
+.drv b{text-align:right;font-weight:500;font-variant-numeric:tabular-nums}
+.circuit{display:flex;flex-direction:column;gap:8px}
+.circ-wrap{overflow-x:auto}
+.circ-wrap svg{display:block;min-width:620px;width:100%;height:auto}
+.circ-wrap text{font-family:var(--mono);font-size:10px;fill:var(--ink)}
+.circstats{display:flex;flex-wrap:wrap;gap:18px;font-family:var(--mono);font-size:.76rem;color:var(--ink-soft)}
+.circstats b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+.legend button{font-size:.74rem;padding:4px 10px}
+@media (max-width:900px){.hero,.reg,.charts,.claims{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}#twinStage{min-height:430px}#regStage{min-height:400px}#landStage{height:400px}}
+@media (max-width:480px){.steps{grid-template-columns:1fr}.riskcard{min-width:0;padding:8px}#riskval{font-size:1.5rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>html{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+
+<div class="wrap">
+<nav class="backbar" aria-label="HeartPanel"><a href="./">← HeartPanel</a><span class="muted">Quantum engine · how the panel is chosen</span></nav>
+
+<header class="hero">
+  <div class="hero-left">
+    <span class="eyebrow">Qiskit Fall Fest 2026 · Quantum ML for Healthcare</span>
+    <h1>Three routine numbers to flag heart-failure risk.</h1>
+    <p>A quantum optimiser (QAOA, in Qiskit) picked <strong>age</strong>, <strong>ejection fraction</strong> and <strong>serum creatinine</strong> out of eleven hospital measurements. No echo machine? It picks a <strong>$4.57</strong> blood-test panel instead. Try the three on this digital-twin patient.</p>
+    <div class="ctl"><label for="age">Age <b id="agev">60 years</b></label><input id="age" type="range" min="40" max="95" step="1" value="60"></div>
+    <div class="ctl"><label for="ef">Ejection fraction <b id="efv">38 %</b></label><input id="ef" type="range" min="15" max="80" step="1" value="38"><small>Share of blood the heart pumps out per beat. Healthy is about 55–70 %.</small></div>
+    <div class="ctl"><label for="sc">Serum creatinine <b id="scv">1.10 mg/dL</b></label><input id="sc" type="range" min="0.5" max="9.4" step="0.05" value="1.1"><small>Kidney marker. Normal is about 0.6–1.2; higher means weaker filtering.</small></div>
+    <div class="btns" role="group" aria-label="Example patients">
+      <button type="button" data-preset="60,38,1.1">Median patient</button>
+      <button type="button" data-preset="52,62,0.9">Lower-risk example</button>
+      <button type="button" data-preset="76,20,2.7">Higher-risk example</button>
+    </div>
+    <div class="drivers" aria-live="polite"><h3>What's driving this estimate</h3><div id="drivers"></div><small class="muted" style="font-size:.76rem">Change in risk if that one measurement were the median patient's value instead. Red raises risk, green lowers it.</small></div>
+    <nav class="jump" aria-label="Sections"><a href="#idea">The idea</a><a href="#regh">Quantum register</a><a href="#circh">The circuit</a><a href="#landh">Landscape</a><a href="#res">Results</a></nav>
+    <p class="disclaim">Random forest trained on 299 patients from one hospital, using only these three inputs. A research demo of what the model learned; not medical advice and not a clinical tool.</p>
+  </div>
+  <div class="stage" id="twinStage" aria-label="3D digital twin: beating heart, aorta with blood flow, and kidneys">
+    <canvas id="twinCanvas"></canvas>
+    <div class="vitals"><span>heart · <b id="vEF">38%</b> out per beat</span><span>flow · <b id="vFlow">—</b></span><span>kidneys · <b id="vSC">1.10</b> mg/dL</span></div>
+    <div class="riskcard" aria-live="polite"><span>Estimated risk of death</span><div id="riskval">—</div><span id="riskpill" class="pill">low</span><span class="cohort">cohort average 32 %</span></div>
+    <canvas class="ecgstrip" id="ecgstrip" aria-hidden="true"></canvas>
+    <div class="hint">drag to rotate · scroll the page as usual</div>
+  </div>
+</header>
+
+<section class="kpis" aria-label="Headline results">
+  <div class="kpi"><b>3 of 11</b><span>routine measurements needed: age, ejection fraction, serum creatinine</span></div>
+  <div class="kpi"><b>10 / 10</b><span>QAOA runs (seeds) that found the true best panel, checked against brute force over all 165</span></div>
+  <div class="kpi"><b>$4.57</b><span>cost of the best panel when no echocardiogram is available (vs $202.42 with one)</span></div>
+</section>
+<p class="why"><strong>Why use a quantum optimiser here?</strong> Choosing a panel is a QUBO, the native input of QAOA. At 11 measurements brute force can check every answer, so this project proves the pipeline finds the right one. The point is panels drawn from 50 to 500 candidate markers, where brute force stops being possible. No quantum advantage is claimed at this size.</p>
+
+<section class="sheet" aria-labelledby="echoh">
+  <span class="eyebrow">Interactive · for clinics without an echo machine</span>
+  <h2 id="echoh">Is an echocardiogram available?</h2>
+  <p class="muted">Test prices are added to the same QUBO, so the optimiser trades prediction quality against cost. Ejection fraction needs an echo ($197.85, 2026 Medicare fee schedule, CPT 93306); creatinine and sodium come from one basic metabolic panel ($4.57, Florida Medicaid 2026 lab fee, CPT 80048); age is free.</p>
+  <div class="btns" role="group" aria-label="Echocardiogram available">
+    <button type="button" class="echobtn" data-echo="1" aria-pressed="true">Echo available</button>
+    <button type="button" class="echobtn" data-echo="0" aria-pressed="false">No echo</button>
+  </div>
+  <div class="echo" aria-live="polite">
+    <div><span class="eyebrow" style="color:var(--ink-soft)">Best 3-measurement panel</span><div class="panel" id="echoPanel"></div></div>
+    <dl><dt>cost</dt><dd id="echoCost"></dd><dt>MCC</dt><dd id="echoMcc"></dd><dt>vs full panel</dt><dd id="echoDelta"></dd><dt>QAOA</dt><dd>found it in 10 / 10 seeds</dd></dl>
+  </div>
+</section>
+
+<section class="sheet" aria-labelledby="idea">
+  <span class="eyebrow">The idea, plainly</span>
+  <h2 id="idea">From a hospital spreadsheet to a quantum circuit and back</h2>
+  <div class="steps">
+    <div class="step"><span class="n">1 · data</span><h3>299 patients</h3><p>Heart-failure records, Faisalabad 2015. 96 died in follow-up. 11 routine measurements each.</p></div>
+    <div class="step"><span class="n">2 · question</span><h3>Pick a panel</h3><p>Choose 3 of 11 measurements: 165 options. Which predicts survival best?</p></div>
+    <div class="step"><span class="n">3 · score</span><h3>Useful, not repetitive</h3><p>Points for separating deaths from survivors, minus points for overlap. That score is a QUBO, the input quantum optimisers read.</p></div>
+    <div class="step"><span class="n">4 · quantum</span><h3>Ask QAOA</h3><p>One qubit per measurement. The circuit makes good panels likelier to appear when measured. 2000 shots.</p></div>
+    <div class="step"><span class="n">5 · check</span><h3>Verify</h3><p>Brute force, classical solvers, a published study, a noisy-chip model, and leakage-free cross-validation.</p></div>
+  </div>
+</section>
+
+<section class="sheet" aria-labelledby="regh">
+  <span class="eyebrow">Interactive · the quantum register</span>
+  <h2 id="regh">Watch QAOA vote, one shot at a time</h2>
+  <p class="muted">Eleven qubits, one per measurement. Glowing links are the redundancy penalties the circuit has to respect. Each qubit's column shows how often it came out <em>selected</em>. Press <strong>Fire 2000 shots</strong> to replay the real samples, or click qubits to build your own panel.</p>
+  <div class="reg">
+    <div class="stage" id="regStage">
+      <canvas id="regCanvas"></canvas>
+      <div class="hint">drag to rotate · click a qubit to select it</div>
+    </div>
+    <div class="side">
+      <div class="btns" role="group" aria-label="QAOA depth">
+        <button type="button" class="depth" data-p="1" aria-pressed="false">depth p = 1</button>
+        <button type="button" class="depth" data-p="2" aria-pressed="true">p = 2</button>
+        <button type="button" class="depth" data-p="3" aria-pressed="false">p = 3</button>
+        <button type="button" class="primary" id="fire">Fire 2000 shots</button>
+      </div>
+      <div class="shots"><span class="muted">shots measured</span><b id="shotN">2000</b></div>
+      <div class="bars" id="bars"></div>
+      <div class="score">
+        <div><span>Your panel</span><b id="selname">Pick 3 qubits</b></div>
+        <div><span>Rank of 165</span><b id="selrank">—</b></div>
+        <div><span>QUBO energy</span><b id="selE">—</b></div>
+        <div><span>Best possible</span><b id="bestE">—</b></div>
+      </div>
+      <div class="btns"><button type="button" id="clear">Clear</button><button type="button" id="showopt">Show the optimum</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="sheet circuit" aria-labelledby="circh">
+  <span class="eyebrow">Under the hood · the QAOA circuit</span>
+  <h2 id="circh">What the quantum computer actually runs</h2>
+  <p class="muted">Start every qubit in an equal mix of selected and not selected (H gates). Then repeat two steps p times: a <strong>cost layer</strong> that rewards useful measurements and penalises overlapping pairs (one ZZ gate per pair, 55 pairs), and a <strong>mixer layer</strong> that lets qubits change their mind. Classical COBYLA tunes the angles γ and β. Finally, measure.</p>
+  <div class="btns" role="group" aria-label="Circuit depth">
+    <button type="button" class="cdepth" data-p="1" aria-pressed="false">p = 1</button>
+    <button type="button" class="cdepth" data-p="2" aria-pressed="true">p = 2</button>
+    <button type="button" class="cdepth" data-p="3" aria-pressed="false">p = 3</button>
+  </div>
+  <div class="circ-wrap"><svg id="circ" viewBox="0 0 900 300" role="img" aria-label="QAOA circuit schematic"></svg></div>
+  <div class="circstats" id="circstats"></div>
+</section>
+
+<section class="sheet" aria-labelledby="landh">
+  <span class="eyebrow">Interactive · the scoring landscape</span>
+  <h2 id="landh">All 165 panels, one peak</h2>
+  <p class="muted">Every possible 3-measurement panel as a point. Moving right means more useful information; moving back means more overlap between the three (ranked, so the points spread out). Height is the QUBO score QAOA tries to maximise. Hover a point to name it.</p>
+  <div class="stage" id="landStage">
+    <canvas id="landCanvas"></canvas>
+    <div class="tip" id="landTip" hidden></div>
+    <div class="hint">drag to rotate · hover a point</div>
+  </div>
+  <div class="legend"><span><i style="background:var(--ecg)"></i>the optimum: age + ejection fraction + serum creatinine</span><span><i style="background:var(--quantum)"></i>panels QAOA sampled often</span><span><i style="background:var(--ink-soft)"></i>other panels</span><button type="button" id="votes" aria-pressed="false">Size by QAOA votes</button></div>
+</section>
+
+<section class="sheet" aria-labelledby="res">
+  <span class="eyebrow">Results · measured, not illustrative</span>
+  <h2 id="res">Did the quantum pick hold up?</h2>
+  <div class="charts">
+    <div class="chart"><h3>Prediction quality by panel</h3><p class="muted" style="font-size:.86rem">Matthews correlation (MCC), random forest, mean of 100 splits. Lines are 95 % intervals corrected for the overlap between splits (Nadeau &amp; Bengio), so panels within about 0.1 of each other are not separable on 299 patients.</p><svg id="mccchart" viewBox="0 0 520 300" role="img" aria-label="MCC by feature panel"></svg></div>
+    <div class="chart"><h3>On a noisy quantum chip</h3><p class="muted" style="font-size:.86rem">Average sample quality, simulated IBM Heron chip (solid) vs perfect simulator (dashed). Depth helps in theory and hurts in practice.</p><svg id="noisechart" viewBox="0 0 420 300" role="img" aria-label="Approximation ratio vs depth, ideal and noisy"></svg></div>
+  </div>
+</section>
+
+<section class="sheet" aria-labelledby="claims">
+  <span class="eyebrow">Straight talk</span>
+  <h2 id="claims">What this shows and what it does not</h2>
+  <div class="claims">
+    <div><h3>Shows</h3><ul>
+      <li>QAOA samples the optimal three measurement panel about 27 times more often than picking panels at random (17 % of shots at depth 2 and 3), and about 46 times more often with interpolated starting angles.</li>
+      <li>Under a realistic chip noise model the optimum is still sampled in every run, and in a leakage free pipeline QAOA picks the same panel as brute force in 98 of 100 splits.</li>
+      <li>Greedy selection on the same score fails (MCC 0.225); judging panels jointly fixes it (0.430, corrected p = 0.004).</li></ul></div>
+    <div><h3>Does not show</h3><ul>
+      <li>Quantum advantage: classical simulated annealing solves this 11-variable problem perfectly in 0.3 s.</li>
+      <li>That 3 measurements beat all 11: MCC 0.430 vs 0.365 looks better, but with 299 patients the corrected p is 0.23.</li>
+      <li>A clinical tool: 299 patients, one hospital; choosing panel size without peeking gives MCC 0.391.</li>
+      <li>Real-hardware runs yet: the noise study uses IBM's calibration model of a real chip.</li></ul></div>
+  </div>
+</section>
+
+<footer class="foot">
+  <span>Code, data, write-up: <a href="https://github.com/qareenahqureshi-commits/qff-qml-heart-failure-qaoa">github.com/qareenahqureshi-commits/qff-qml-heart-failure-qaoa</a></span>
+  <span>Data: UCI Heart Failure Clinical Records (Chicco &amp; Jurman 2020) · QUBO: Mücke et al. 2023</span>
+</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DATA={"I":[0.7257,0.0465,0.0416,0.0,0.8201,0.0668,0.0255,1.0,0.4178,0.0002,0.0016],"R":[[0.0,0.1974,0.183,0.2265,0.1348,0.2092,0.1174,0.357,0.1031,0.1467,0.0419],[0.1974,0.0,0.4278,0.0285,0.0708,0.0856,0.0982,0.117,0.0939,0.2125,0.2406],[0.183,0.4278,0.0,0.0216,0.0989,0.1583,0.0549,0.0368,0.1336,0.1789,0.0054],[0.2265,0.0285,0.0216,0.0,0.0109,0.0286,0.2068,0.1054,0.2008,0.3537,0.3301],[0.1348,0.0708,0.0989,0.0109,0.0,0.0548,0.1619,0.0253,0.3945,0.3328,0.151],[0.2092,0.0856,0.1583,0.0286,0.0548,0.0,0.1121,0.0111,0.0832,0.2346,0.1249],[0.1174,0.0982,0.0549,0.2068,0.1619,0.1121,0.0,0.0924,0.1393,0.2806,0.0633],[0.357,0.117,0.0368,0.1054,0.0253,0.0111,0.0924,0.0,0.4241,0.0156,0.0615],[0.1031,0.0939,0.1336,0.2008,0.3945,0.0832,0.1393,0.4241,0.0,0.0618,0.0108],[0.1467,0.2125,0.1789,0.3537,0.3328,0.2346,0.2806,0.0156,0.0618,0.0,1.0],[0.0419,0.2406,0.0054,0.3301,0.151,0.1249,0.0633,0.0615,0.0108,1.0,0.0]],"triples":[[[0,4,7],-1.6508],[[4,5,7],-1.3696],[[2,4,7],-1.3158],[[3,4,7],-1.2943],[[1,4,7],-1.2934],[[4,7,8],-1.2565],[[4,7,10],-1.2474],[[4,6,7],-1.2444],[[4,7,9],-1.1783],[[0,7,8],-1.1656],[[0,4,8],-1.1566],[[0,7,10],-1.0654],[[0,5,7],-1.0558],[[0,2,7],-1.0371],[[0,7,9],-1.0347],[[0,6,7],-1.03],[[0,4,5],-1.0101],[[0,4,10],-0.9968],[[0,1,7],-0.9935],[[0,1,4],-0.9928],[[0,2,4],-0.9823],[[0,3,4],-0.9733],[[0,4,6],-0.9715],[[0,3,7],-0.9499],[[5,7,8],-0.8543],[[0,4,9],-0.8524],[[7,8,10],-0.8164],[[7,8,9],-0.8127],[[2,7,8],-0.7974],[[0,8,10],-0.781],[[1,7,8],-0.7807],[[6,7,8],-0.7546],[[2,7,10],-0.7306],[[2,5,7],-0.7282],[[1,5,7],-0.7281],[[3,5,7],-0.7276],[[4,5,8],-0.7123],[[5,6,7],-0.7115],[[0,5,8],-0.71],[[2,6,7],-0.7083],[[5,7,10],-0.7026],[[0,8,9],-0.7019],[[2,3,7],-0.6993],[[3,7,8],-0.6982],[[0,6,8],-0.6969],[[0,1,8],-0.6953],[[1,4,8],-0.6837],[[0,2,8],-0.6791],[[5,7,9],-0.6696],[[2,7,9],-0.6657],[[6,7,10],-0.6618],[[1,3,7],-0.6594],[[4,8,10],-0.6516],[[1,6,7],-0.6502],[[2,4,8],-0.6462],[[3,4,8],-0.6254],[[3,4,5],-0.6181],[[1,7,9],-0.6124],[[4,6,8],-0.5997],[[1,3,4],-0.5949],[[1,4,5],-0.5945],[[0,3,8],-0.5924],[[2,3,4],-0.5806],[[1,7,10],-0.5765],[[6,7,9],-0.5749],[[3,6,7],-0.5669],[[2,4,5],-0.5404],[[4,8,9],-0.534],[[1,2,7],-0.5253],[[2,4,10],-0.5199],[[4,5,6],-0.5199],[[3,7,9],-0.5128],[[2,4,6],-0.5076],[[1,4,6],-0.5037],[[3,7,10],-0.5028],[[4,5,10],-0.5011],[[0,2,10],-0.4616],[[0,6,10],-0.4534],[[4,6,10],-0.4474],[[3,4,6],-0.4445],[[1,4,10],-0.42],[[0,2,6],-0.417],[[0,5,10],-0.4076],[[0,5,6],-0.3942],[[0,1,6],-0.3918],[[0,1,5],-0.3832],[[1,2,4],-0.3825],[[3,4,10],-0.3704],[[0,3,5],-0.3622],[[0,2,3],-0.36],[[4,5,9],-0.3542],[[0,1,3],-0.3529],[[0,2,5],-0.3504],[[1,4,9],-0.342],[[2,4,9],-0.3411],[[0,1,10],-0.3405],[[0,2,9],-0.3213],[[0,1,9],-0.301],[[0,5,9],-0.2992],[[0,6,9],-0.2912],[[0,3,6],-0.2881],[[2,8,10],-0.2709],[[1,5,8],-0.2669],[[3,4,9],-0.2665],[[5,8,10],-0.2552],[[4,6,9],-0.2467],[[0,3,10],-0.2463],[[6,8,10],-0.227],[[5,6,8],-0.2153],[[7,9,10],-0.2128],[[2,5,8],-0.2071],[[3,5,8],-0.2071],[[0,1,2],-0.2063],[[1,6,8],-0.2016],[[2,6,8],-0.1998],[[1,3,8],-0.1866],[[0,3,9],-0.1809],[[1,8,10],-0.1768],[[5,8,9],-0.1737],[[2,3,8],-0.1666],[[1,8,9],-0.1642],[[2,8,9],-0.1575],[[6,8,9],-0.0917],[[3,6,8],-0.059],[[1,2,8],-0.0518],[[3,8,10],-0.0437],[[1,3,5],-0.0136],[[3,8,9],-0.0053],[[2,6,10],0.0102],[[2,3,5],0.0229],[[1,5,6],0.0439],[[0,9,10],0.0487],[[2,5,10],0.0618],[[2,5,6],0.0622],[[5,6,10],0.0797],[[2,3,6],0.0913],[[3,5,6],0.1045],[[1,3,6],0.1128],[[4,9,10],0.1254],[[1,5,10],0.1394],[[1,6,10],0.1459],[[2,3,10],0.1461],[[1,2,3],0.1729],[[1,5,9],0.1813],[[3,5,10],0.1905],[[2,5,9],0.2045],[[1,2,6],0.2052],[[2,6,9],0.2068],[[1,2,5],0.2197],[[8,9,10],0.2216],[[1,6,9],0.2416],[[5,6,9],0.2443],[[2,3,9],0.2458],[[3,5,9],0.2582],[[1,3,9],0.2624],[[1,3,10],0.2635],[[1,2,10],0.2696],[[3,6,10],0.2797],[[1,2,9],0.3434],[[3,6,9],0.4013],[[2,9,10],0.5596],[[5,9,10],0.6283],[[6,9,10],0.6515],[[1,9,10],0.6904],[[3,9,10],0.8406]],"qaoa":{"1":{"marg":[0.6,0.186,0.249,0.183,0.719,0.298,0.24,0.842,0.414,0.116,0.146],"top":[[[0,4,7],95],[[0,4,7,8],57],[[4,7],57],[[0,4,5,7],40],[[4,7,8],39],[[0,4,5,7,8],31],[[0,2,4,7],31],[[0,4,6,7],29],[[2,4,7],28],[[0,7],25],[[0,1,4,7],24],[[0,3,4,7],24],[[7],23],[[4,6,7],21],[[0,4,6,7,8],20],[[3,4,7],19],[[0,3,4,7,8],18],[[0,7,8],17],[[0,2,4,7,8],17],[[4,5,7,8],16],[[0,3,4,5,7],15],[[4,6,7,8],14],[[0,6,7],14],[[0,1,4,5,7],14],[[4,5,7],14],[[1,4,7],14],[[0,5,7,8],13],[[2,4,6,7],13],[[4,8],13],[[0,4],12],[[0,2,7],12],[[0,2,4,5,7],12],[[0,1,4,7,8],12],[[4,5,6,7],12],[[0,4,5,6,7],12],[[7,8],12],[[2,4,7,8],11],[[0,2,7,8],11],[[3,4,5,7],11],[[0,4,8],11]],"other":1117},"2":{"marg":[0.696,0.054,0.123,0.053,0.896,0.192,0.104,0.986,0.351,0.077,0.014],"top":[[[0,4,7],413],[[0,4,7,8],232],[[4,7],150],[[0,4,5,7],111],[[4,7,8],95],[[0,2,4,7],72],[[4,5,7],62],[[0,4,6,7],55],[[0,7],41],[[0,7,8],40],[[0,2,4,7,8],38],[[0,4,5,7,8],36],[[0,1,4,7],34],[[2,4,7],30],[[4,5,7,8],30],[[4,6,7],29],[[0,3,4,7],28],[[0,4,7,9],21],[[0,4,7,8,9],20],[[0,4,6,7,8],20],[[7],18],[[1,4,7],17],[[2,4,7,8],17],[[0,4,5,6,7],14],[[4,6,7,8],14],[[0,4,5,7,9],11],[[0,1,4,7,8],11],[[0,5,7],10],[[0,3,4,7,8],10],[[0,4,5,7,8,9],10],[[3,4,7],10],[[0,2,4,5,7],8],[[0,4,7,9,10],8],[[0,4,5,6,7,8],7],[[0,2,7,8],7],[[0,5,7,8],7],[[1,4,7,8],7],[[0,4,8],7],[[0,2,4,6,7],7],[[7,8],7]],"other":236},"3":{"marg":[0.79,0.078,0.112,0.08,0.956,0.214,0.111,0.976,0.301,0.159,0.154],"top":[[[0,4,7],379],[[0,4,7,8],186],[[0,4,5,7],114],[[4,7],99],[[0,4,7,9],81],[[0,4,6,7],52],[[0,4,5,7,8],51],[[0,4,7,10],51],[[0,2,4,7],40],[[0,4,7,9,10],36],[[0,3,4,7],35],[[4,5,7],33],[[0,2,4,7,8],32],[[0,4,7,8,9],27],[[4,7,8],26],[[0,1,4,7],26],[[0,3,4,7,8],25],[[4,7,10],25],[[4,7,9],24],[[0,4,6,7,8],24],[[0,1,2,4,7],22],[[0,2,4,5,7],22],[[0,4,5,6,7],21],[[4,7,9,10],21],[[0,4,7,8,10],20],[[0,4,7,8,9,10],19],[[0,4,5,7,10],16],[[0,3,4,5,7],16],[[0,1,4,7,8],14],[[0,7],13],[[4,6,7],13],[[4,5,7,8],13],[[0,7,8],12],[[0,4,5,7,9],12],[[2,4,7],10],[[4,7,8,9],10],[[0,2,4,6,7,8],10],[[0,1,4,5,7],10],[[0,3,4,6,7],8],[[0,2,4,6,7],8]],"other":344}},"twin":{"ages":[40,45,50,55,60,65,70,75,80,85,90,95],"efs":[15,20,25,30,35,40,45,50,55,60,65,70,75,80],"scs":[0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.5,4.5,5.5,6.5,7.5,8.5,9.5],"p":[0.486,0.484,0.544,0.6,0.661,0.677,0.784,0.766,0.734,0.725,0.727,0.713,0.722,0.723,0.723,0.723,0.723,0.723,0.486,0.483,0.544,0.6,0.662,0.678,0.785,0.767,0.734,0.726,0.728,0.714,0.722,0.724,0.724,0.724,0.724,0.724,0.331,0.327,0.409,0.402,0.437,0.462,0.571,0.54,0.5,0.488,0.493,0.482,0.492,0.493,0.493,0.493,0.493,0.493,0.111,0.1,0.22,0.3,0.369,0.401,0.549,0.513,0.47,0.455,0.465,0.461,0.473,0.474,0.474,0.474,0.474,0.474,0.074,0.06,0.159,0.085,0.134,0.191,0.484,0.458,0.425,0.41,0.428,0.431,0.445,0.446,0.446,0.446,0.446,0.446,0.036,0.023,0.046,0.044,0.117,0.189,0.538,0.526,0.499,0.485,0.505,0.507,0.521,0.523,0.523,0.523,0.523,0.523,0.041,0.028,0.044,0.06,0.133,0.201,0.53,0.517,0.489,0.476,0.494,0.496,0.51,0.511,0.511,0.511,0.511,0.511,0.079,0.065,0.096,0.081,0.149,0.211,0.529,0.517,0.489,0.478,0.496,0.497,0.511,0.513,0.513,0.513,0.513,0.513,0.065,0.052,0.076,0.084,0.159,0.221,0.537,0.523,0.495,0.484,0.503,0.505,0.518,0.52,0.52,0.52,0.52,0.52,0.055,0.043,0.067,0.087,0.161,0.222,0.528,0.514,0.487,0.476,0.493,0.494,0.508,0.51,0.51,0.51,0.51,0.51,0.063,0.05,0.074,0.093,0.167,0.226,0.526,0.513,0.486,0.477,0.492,0.494,0.507,0.509,0.509,0.509,0.509,0.509,0.063,0.05,0.074,0.093,0.167,0.226,0.526,0.513,0.486,0.477,0.492,0.494,0.507,0.509,0.509,0.509,0.509,0.509,0.063,0.05,0.074,0.093,0.167,0.226,0.526,0.513,0.486,0.477,0.492,0.494,0.507,0.509,0.509,0.509,0.509,0.509,0.063,0.05,0.074,0.093,0.167,0.226,0.526,0.513,0.486,0.477,0.492,0.494,0.507,0.509,0.509,0.509,0.509,0.509,0.544,0.542,0.64,0.687,0.734,0.744,0.841,0.822,0.788,0.779,0.78,0.766,0.774,0.776,0.776,0.776,0.776,0.776,0.543,0.541,0.64,0.687,0.735,0.745,0.842,0.823,0.789,0.78,0.781,0.767,0.775,0.777,0.777,0.777,0.777,0.777,0.38,0.377,0.507,0.492,0.511,0.529,0.62,0.589,0.547,0.535,0.539,0.529,0.54,0.541,0.541,0.541,0.541,0.541,0.153,0.142,0.327,0.401,0.464,0.494,0.619,0.583,0.537,0.522,0.532,0.53,0.543,0.544,0.544,0.544,0.544,0.544,0.112,0.096,0.258,0.158,0.207,0.264,0.557,0.533,0.497,0.482,0.501,0.506,0.521,0.522,0.522,0.522,0.522,0.522,0.057,0.042,0.097,0.085,0.164,0.239,0.594,0.583,0.556,0.541,0.562,0.566,0.582,0.583,0.583,0.583,0.583,0.583,0.063,0.047,0.093,0.105,0.182,0.254,0.588,0.575,0.547,0.533,0.552,0.556,0.571,0.573,0.573,0.573,0.573,0.573,0.103,0.087,0.146,0.126,0.198,0.263,0.586,0.574,0.545,0.533,0.552,0.555,0.57,0.572,0.572,0.572,0.572,0.572,0.087,0.071,0.124,0.131,0.211,0.276,0.595,0.581,0.552,0.541,0.56,0.564,0.579,0.58,0.58,0.58,0.58,0.58,0.075,0.061,0.114,0.134,0.212,0.276,0.585,0.571,0.543,0.532,0.549,0.553,0.568,0.569,0.569,0.569,0.569,0.569,0.082,0.068,0.121,0.14,0.219,0.281,0.584,0.57,0.542,0.532,0.548,0.552,0.567,0.568,0.568,0.568,0.568,0.568,0.082,0.068,0.121,0.14,0.219,0.281,0.584,0.57,0.542,0.532,0.548,0.552,0.567,0.568,0.568,0.568,0.568,0.568,0.082,0.068,0.121,0.14,0.219,0.281,0.584,0.57,0.542,0.532,0.548,0.552,0.567,0.568,0.568,0.568,0.568,0.568,0.082,0.068,0.121,0.14,0.219,0.281,0.584,0.57,0.542,0.532,0.548,0.552,0.567,0.568,0.568,0.568,0.568,0.568,0.502,0.5,0.584,0.639,0.696,0.713,0.831,0.813,0.778,0.769,0.77,0.756,0.764,0.765,0.765,0.765,0.765,0.765,0.502,0.5,0.584,0.639,0.697,0.713,0.832,0.814,0.778,0.769,0.771,0.757,0.765,0.766,0.766,0.766,0.766,0.766,0.34,0.338,0.449,0.439,0.464,0.495,0.611,0.579,0.537,0.524,0.529,0.519,0.53,0.531,0.531,0.531,0.531,0.531,0.116,0.104,0.283,0.362,0.431,0.47,0.615,0.579,0.533,0.518,0.528,0.526,0.538,0.54,0.54,0.54,0.54,0.54,0.151,0.135,0.289,0.175,0.216,0.275,0.581,0.557,0.521,0.506,0.525,0.53,0.545,0.546,0.546,0.546,0.546,0.546,0.092,0.076,0.116,0.107,0.181,0.254,0.624,0.613,0.586,0.571,0.592,0.597,0.612,0.613,0.613,0.613,0.613,0.613,0.096,0.08,0.11,0.129,0.199,0.27,0.619,0.606,0.577,0.563,0.583,0.587,0.602,0.604,0.604,0.604,0.604,0.604,0.143,0.126,0.172,0.155,0.219,0.284,0.619,0.606,0.578,0.565,0.584,0.588,0.603,0.604,0.604,0.604,0.604,0.604,0.127,0.111,0.149,0.159,0.23,0.296,0.627,0.613,0.585,0.572,0.591,0.596,0.611,0.612,0.612,0.612,0.612,0.612,0.109,0.094,0.134,0.159,0.231,0.293,0.616,0.603,0.574,0.562,0.579,0.584,0.599,0.6,0.6,0.6,0.6,0.6,0.116,0.101,0.141,0.166,0.238,0.298,0.615,0.601,0.573,0.563,0.578,0.583,0.598,0.599,0.599,0.599,0.599,0.599,0.116,0.101,0.141,0.166,0.238,0.298,0.615,0.601,0.573,0.563,0.578,0.583,0.598,0.599,0.599,0.599,0.599,0.599,0.116,0.101,0.141,0.166,0.238,0.298,0.615,0.601,0.573,0.563,0.578,0.583,0.598,0.599,0.599,0.599,0.599,0.599,0.116,0.101,0.141,0.166,0.238,0.298,0.615,0.601,0.573,0.563,0.578,0.583,0.598,0.599,0.599,0.599,0.599,0.599,0.547,0.543,0.627,0.671,0.732,0.747,0.852,0.833,0.797,0.787,0.789,0.774,0.783,0.784,0.784,0.784,0.784,0.784,0.547,0.543,0.626,0.671,0.732,0.748,0.853,0.834,0.797,0.788,0.79,0.775,0.784,0.785,0.785,0.785,0.785,0.785,0.402,0.397,0.506,0.475,0.497,0.517,0.615,0.583,0.541,0.528,0.534,0.523,0.535,0.537,0.537,0.537,0.537,0.537,0.127,0.113,0.267,0.345,0.433,0.474,0.605,0.572,0.527,0.513,0.525,0.524,0.537,0.539,0.539,0.539,0.539,0.539,0.077,0.056,0.135,0.063,0.119,0.186,0.522,0.505,0.472,0.462,0.486,0.494,0.509,0.511,0.511,0.511,0.511,0.511,0.049,0.031,0.038,0.049,0.127,0.2,0.585,0.581,0.556,0.546,0.573,0.58,0.596,0.597,0.597,0.597,0.597,0.597,0.053,0.034,0.044,0.082,0.154,0.225,0.582,0.576,0.55,0.541,0.565,0.571,0.587,0.588,0.588,0.588,0.588,0.588,0.096,0.078,0.115,0.113,0.177,0.241,0.585,0.578,0.552,0.545,0.568,0.573,0.589,0.59,0.59,0.59,0.59,0.59,0.083,0.066,0.097,0.123,0.194,0.258,0.597,0.59,0.564,0.557,0.579,0.585,0.601,0.602,0.602,0.602,0.602,0.602,0.071,0.055,0.087,0.133,0.204,0.263,0.591,0.583,0.557,0.551,0.571,0.577,0.593,0.594,0.594,0.594,0.594,0.594,0.077,0.061,0.094,0.14,0.21,0.268,0.59,0.582,0.556,0.551,0.57,0.576,0.592,0.593,0.593,0.593,0.593,0.593,0.077,0.061,0.094,0.14,0.21,0.268,0.59,0.582,0.556,0.551,0.57,0.576,0.592,0.593,0.593,0.593,0.593,0.593,0.077,0.061,0.094,0.14,0.21,0.268,0.59,0.582,0.556,0.551,0.57,0.576,0.592,0.593,0.593,0.593,0.593,0.593,0.077,0.061,0.094,0.14,0.21,0.268,0.59,0.582,0.556,0.551,0.57,0.576,0.592,0.593,0.593,0.593,0.593,0.593,0.593,0.582,0.652,0.672,0.739,0.754,0.85,0.824,0.787,0.778,0.78,0.764,0.773,0.774,0.774,0.774,0.774,0.774,0.594,0.583,0.653,0.673,0.74,0.756,0.852,0.826,0.789,0.78,0.782,0.766,0.775,0.776,0.776,0.776,0.776,0.776,0.47,0.458,0.553,0.489,0.525,0.542,0.632,0.593,0.546,0.536,0.541,0.53,0.541,0.543,0.543,0.543,0.543,0.543,0.176,0.155,0.276,0.344,0.459,0.497,0.615,0.575,0.526,0.515,0.528,0.526,0.539,0.541,0.541,0.541,0.541,0.541,0.127,0.098,0.139,0.077,0.146,0.205,0.524,0.508,0.476,0.468,0.495,0.501,0.517,0.518,0.518,0.518,0.518,0.518,0.095,0.069,0.07,0.078,0.158,0.219,0.581,0.579,0.556,0.549,0.579,0.585,0.601,0.602,0.602,0.602,0.602,0.602,0.104,0.076,0.092,0.126,0.194,0.248,0.578,0.573,0.55,0.543,0.57,0.575,0.591,0.592,0.592,0.592,0.592,0.592,0.148,0.122,0.19,0.169,0.22,0.268,0.579,0.575,0.552,0.547,0.573,0.577,0.592,0.594,0.594,0.594,0.594,0.594,0.136,0.111,0.174,0.183,0.24,0.288,0.592,0.585,0.562,0.557,0.583,0.587,0.603,0.604,0.604,0.604,0.604,0.604,0.125,0.101,0.165,0.201,0.259,0.301,0.59,0.582,0.559,0.553,0.576,0.58,0.596,0.597,0.597,0.597,0.597,0.597,0.132,0.108,0.171,0.207,0.265,0.305,0.589,0.581,0.558,0.554,0.575,0.579,0.595,0.596,0.596,0.596,0.596,0.596,0.132,0.108,0.171,0.207,0.265,0.305,0.589,0.581,0.558,0.554,0.575,0.579,0.595,0.596,0.596,0.596,0.596,0.596,0.132,0.108,0.171,0.207,0.265,0.305,0.589,0.581,0.558,0.554,0.575,0.579,0.595,0.596,0.596,0.596,0.596,0.596,0.132,0.108,0.171,0.207,0.265,0.305,0.589,0.581,0.558,0.554,0.575,0.579,0.595,0.596,0.596,0.596,0.596,0.596,0.571,0.563,0.647,0.694,0.761,0.767,0.823,0.795,0.758,0.749,0.752,0.74,0.748,0.749,0.749,0.749,0.749,0.749,0.571,0.564,0.647,0.695,0.762,0.769,0.825,0.797,0.76,0.751,0.754,0.742,0.75,0.751,0.751,0.751,0.751,0.751,0.462,0.454,0.561,0.529,0.569,0.57,0.605,0.562,0.514,0.501,0.508,0.501,0.512,0.513,0.513,0.513,0.513,0.513,0.152,0.136,0.259,0.334,0.488,0.519,0.596,0.548,0.496,0.484,0.498,0.499,0.511,0.513,0.513,0.513,0.513,0.513,0.086,0.063,0.118,0.073,0.188,0.23,0.497,0.473,0.434,0.423,0.451,0.462,0.476,0.477,0.477,0.477,0.477,0.477,0.062,0.041,0.07,0.076,0.198,0.238,0.55,0.539,0.508,0.498,0.529,0.539,0.554,0.555,0.555,0.555,0.555,0.555,0.088,0.066,0.12,0.164,0.266,0.294,0.564,0.551,0.52,0.51,0.538,0.548,0.562,0.563,0.563,0.563,0.563,0.563,0.132,0.111,0.221,0.207,0.29,0.312,0.563,0.55,0.52,0.512,0.538,0.547,0.561,0.563,0.563,0.563,0.563,0.563,0.115,0.095,0.197,0.209,0.3,0.322,0.569,0.554,0.523,0.515,0.541,0.55,0.565,0.566,0.566,0.566,0.566,0.566,0.09,0.071,0.168,0.214,0.307,0.325,0.56,0.543,0.513,0.506,0.529,0.539,0.553,0.554,0.554,0.554,0.554,0.554,0.097,0.078,0.174,0.219,0.313,0.33,0.559,0.542,0.512,0.506,0.528,0.538,0.552,0.553,0.553,0.553,0.553,0.553,0.097,0.078,0.174,0.219,0.313,0.33,0.559,0.542,0.512,0.506,0.528,0.538,0.552,0.553,0.553,0.553,0.553,0.553,0.097,0.078,0.174,0.219,0.313,0.33,0.559,0.542,0.512,0.506,0.528,0.538,0.552,0.553,0.553,0.553,0.553,0.553,0.097,0.078,0.174,0.219,0.313,0.33,0.559,0.542,0.512,0.506,0.528,0.538,0.552,0.553,0.553,0.553,0.553,0.553,0.578,0.57,0.668,0.727,0.782,0.788,0.841,0.813,0.782,0.773,0.777,0.769,0.775,0.777,0.777,0.777,0.777,0.777,0.579,0.571,0.669,0.727,0.784,0.79,0.843,0.815,0.784,0.774,0.779,0.771,0.777,0.779,0.779,0.779,0.779,0.779,0.492,0.483,0.606,0.582,0.612,0.615,0.648,0.604,0.563,0.55,0.558,0.556,0.565,0.566,0.566,0.566,0.566,0.566,0.197,0.183,0.324,0.397,0.523,0.557,0.641,0.59,0.543,0.53,0.545,0.551,0.562,0.563,0.563,0.563,0.563,0.563,0.129,0.111,0.202,0.177,0.259,0.297,0.543,0.512,0.475,0.463,0.491,0.507,0.518,0.52,0.52,0.52,0.52,0.52,0.093,0.076,0.153,0.187,0.267,0.298,0.58,0.56,0.531,0.52,0.549,0.565,0.576,0.577,0.577,0.577,0.577,0.577,0.133,0.116,0.227,0.314,0.372,0.385,0.606,0.582,0.553,0.542,0.569,0.583,0.595,0.596,0.596,0.596,0.596,0.596,0.164,0.147,0.296,0.326,0.371,0.379,0.59,0.567,0.538,0.529,0.555,0.57,0.581,0.583,0.583,0.583,0.583,0.583,0.147,0.131,0.267,0.326,0.377,0.385,0.597,0.573,0.544,0.535,0.561,0.575,0.587,0.588,0.588,0.588,0.588,0.588,0.12,0.103,0.231,0.314,0.368,0.379,0.583,0.559,0.531,0.523,0.546,0.561,0.572,0.574,0.574,0.574,0.574,0.574,0.127,0.11,0.235,0.318,0.371,0.381,0.582,0.558,0.53,0.524,0.545,0.56,0.572,0.573,0.573,0.573,0.573,0.573,0.127,0.11,0.235,0.318,0.371,0.381,0.582,0.558,0.53,0.524,0.545,0.56,0.572,0.573,0.573,0.573,0.573,0.573,0.127,0.11,0.235,0.318,0.371,0.381,0.582,0.558,0.53,0.524,0.545,0.56,0.572,0.573,0.573,0.573,0.573,0.573,0.127,0.11,0.235,0.318,0.371,0.381,0.582,0.558,0.53,0.524,0.545,0.56,0.572,0.573,0.573,0.573,0.573,0.573,0.582,0.574,0.653,0.719,0.777,0.827,0.897,0.867,0.849,0.843,0.846,0.838,0.841,0.842,0.842,0.842,0.842,0.842,0.583,0.575,0.654,0.72,0.779,0.829,0.899,0.869,0.851,0.844,0.848,0.84,0.843,0.844,0.844,0.844,0.844,0.844,0.502,0.493,0.595,0.594,0.643,0.71,0.785,0.74,0.715,0.707,0.711,0.705,0.709,0.71,0.71,0.71,0.71,0.71,0.289,0.276,0.394,0.474,0.593,0.694,0.814,0.763,0.734,0.725,0.735,0.733,0.739,0.739,0.739,0.739,0.739,0.739,0.205,0.188,0.273,0.271,0.357,0.468,0.72,0.686,0.666,0.654,0.676,0.678,0.684,0.684,0.684,0.684,0.684,0.684,0.149,0.133,0.204,0.253,0.332,0.437,0.724,0.7,0.684,0.673,0.695,0.697,0.704,0.704,0.704,0.704,0.704,0.704,0.173,0.157,0.249,0.335,0.4,0.49,0.734,0.707,0.69,0.679,0.699,0.701,0.707,0.708,0.708,0.708,0.708,0.708,0.177,0.161,0.274,0.309,0.358,0.442,0.684,0.658,0.641,0.632,0.651,0.652,0.659,0.659,0.659,0.659,0.659,0.659,0.166,0.151,0.25,0.308,0.361,0.444,0.686,0.659,0.642,0.633,0.652,0.654,0.66,0.661,0.661,0.661,0.661,0.661,0.146,0.131,0.224,0.302,0.355,0.439,0.672,0.647,0.63,0.622,0.638,0.64,0.646,0.647,0.647,0.647,0.647,0.647,0.153,0.137,0.228,0.306,0.358,0.441,0.671,0.646,0.629,0.621,0.637,0.639,0.645,0.646,0.646,0.646,0.646,0.646,0.153,0.137,0.228,0.306,0.358,0.441,0.671,0.646,0.629,0.621,0.637,0.639,0.645,0.646,0.646,0.646,0.646,0.646,0.153,0.137,0.228,0.306,0.358,0.441,0.671,0.646,0.629,0.621,0.637,0.639,0.645,0.646,0.646,0.646,0.646,0.646,0.153,0.137,0.228,0.306,0.358,0.441,0.671,0.646,0.629,0.621,0.637,0.639,0.645,0.646,0.646,0.646,0.646,0.646,0.616,0.61,0.683,0.75,0.797,0.829,0.877,0.849,0.834,0.828,0.83,0.822,0.825,0.826,0.826,0.826,0.826,0.826,0.616,0.611,0.684,0.751,0.798,0.831,0.879,0.851,0.836,0.83,0.832,0.824,0.827,0.828,0.828,0.828,0.828,0.828,0.55,0.544,0.634,0.646,0.684,0.724,0.775,0.733,0.712,0.704,0.706,0.699,0.703,0.704,0.704,0.704,0.704,0.704,0.428,0.421,0.535,0.608,0.681,0.732,0.803,0.755,0.732,0.724,0.732,0.727,0.733,0.733,0.733,0.733,0.733,0.733,0.413,0.404,0.514,0.532,0.565,0.621,0.747,0.711,0.695,0.685,0.697,0.694,0.7,0.7,0.7,0.7,0.7,0.7,0.398,0.39,0.498,0.543,0.571,0.619,0.769,0.743,0.731,0.722,0.733,0.731,0.737,0.737,0.737,0.737,0.737,0.737,0.403,0.394,0.509,0.573,0.592,0.634,0.76,0.734,0.721,0.712,0.723,0.72,0.726,0.727,0.727,0.727,0.727,0.727,0.401,0.392,0.513,0.539,0.547,0.585,0.713,0.687,0.674,0.667,0.678,0.676,0.681,0.682,0.682,0.682,0.682,0.682,0.389,0.381,0.492,0.537,0.548,0.586,0.713,0.687,0.674,0.667,0.678,0.676,0.681,0.682,0.682,0.682,0.682,0.682,0.372,0.364,0.468,0.527,0.538,0.574,0.7,0.674,0.661,0.655,0.663,0.661,0.666,0.667,0.667,0.667,0.667,0.667,0.373,0.366,0.467,0.526,0.537,0.572,0.697,0.671,0.659,0.653,0.66,0.658,0.663,0.664,0.664,0.664,0.664,0.664,0.373,0.366,0.467,0.526,0.537,0.572,0.697,0.671,0.659,0.653,0.66,0.658,0.663,0.664,0.664,0.664,0.664,0.664,0.373,0.366,0.467,0.526,0.537,0.572,0.697,0.671,0.659,0.653,0.66,0.658,0.663,0.664,0.664,0.664,0.664,0.664,0.373,0.366,0.467,0.526,0.537,0.572,0.697,0.671,0.659,0.653,0.66,0.658,0.663,0.664,0.664,0.664,0.664,0.664,0.647,0.643,0.714,0.774,0.814,0.84,0.878,0.85,0.835,0.83,0.832,0.824,0.827,0.828,0.828,0.828,0.828,0.828,0.647,0.644,0.715,0.775,0.816,0.842,0.88,0.852,0.837,0.832,0.834,0.826,0.829,0.83,0.83,0.83,0.83,0.83,0.588,0.584,0.672,0.68,0.707,0.738,0.779,0.737,0.717,0.709,0.711,0.704,0.708,0.709,0.709,0.709,0.709,0.709,0.497,0.492,0.611,0.672,0.723,0.758,0.808,0.76,0.738,0.73,0.735,0.731,0.736,0.737,0.737,0.737,0.737,0.737,0.491,0.484,0.6,0.612,0.629,0.667,0.758,0.721,0.706,0.697,0.706,0.704,0.709,0.71,0.71,0.71,0.71,0.71,0.497,0.491,0.605,0.636,0.643,0.674,0.788,0.761,0.75,0.741,0.75,0.748,0.753,0.754,0.754,0.754,0.754,0.754,0.5,0.494,0.61,0.652,0.656,0.685,0.78,0.752,0.74,0.731,0.74,0.738,0.743,0.744,0.744,0.744,0.744,0.744,0.498,0.491,0.614,0.62,0.613,0.638,0.733,0.706,0.693,0.686,0.695,0.693,0.698,0.699,0.699,0.699,0.699,0.699,0.486,0.48,0.593,0.618,0.612,0.638,0.733,0.706,0.693,0.686,0.695,0.692,0.698,0.699,0.699,0.699,0.699,0.699,0.468,0.463,0.569,0.607,0.601,0.625,0.719,0.693,0.68,0.674,0.68,0.678,0.683,0.684,0.684,0.684,0.684,0.684,0.468,0.463,0.567,0.605,0.6,0.622,0.715,0.689,0.677,0.671,0.677,0.675,0.68,0.681,0.681,0.681,0.681,0.681,0.468,0.463,0.567,0.605,0.6,0.622,0.715,0.689,0.677,0.671,0.677,0.675,0.68,0.681,0.681,0.681,0.681,0.681,0.468,0.463,0.567,0.605,0.6,0.622,0.715,0.689,0.677,0.671,0.677,0.675,0.68,0.681,0.681,0.681,0.681,0.681,0.468,0.463,0.567,0.605,0.6,0.622,0.715,0.689,0.677,0.671,0.677,0.675,0.68,0.681,0.681,0.681,0.681,0.681,0.664,0.661,0.73,0.786,0.826,0.85,0.886,0.858,0.843,0.839,0.841,0.834,0.837,0.837,0.837,0.837,0.837,0.837,0.665,0.662,0.731,0.787,0.827,0.852,0.888,0.86,0.845,0.841,0.843,0.836,0.839,0.839,0.839,0.839,0.839,0.839,0.61,0.606,0.692,0.698,0.724,0.752,0.791,0.748,0.728,0.721,0.724,0.717,0.721,0.722,0.722,0.722,0.722,0.722,0.525,0.52,0.637,0.696,0.745,0.775,0.823,0.774,0.752,0.745,0.751,0.747,0.752,0.753,0.753,0.753,0.753,0.753,0.521,0.514,0.628,0.636,0.652,0.684,0.774,0.737,0.722,0.713,0.723,0.721,0.726,0.727,0.727,0.727,0.727,0.727,0.528,0.522,0.634,0.661,0.667,0.692,0.804,0.777,0.766,0.757,0.767,0.765,0.77,0.771,0.771,0.771,0.771,0.771,0.531,0.524,0.639,0.677,0.68,0.702,0.796,0.768,0.756,0.748,0.757,0.755,0.76,0.761,0.761,0.761,0.761,0.761,0.529,0.522,0.643,0.647,0.639,0.658,0.751,0.724,0.711,0.705,0.714,0.712,0.717,0.718,0.718,0.718,0.718,0.718,0.517,0.511,0.622,0.644,0.638,0.657,0.75,0.723,0.71,0.704,0.713,0.711,0.716,0.717,0.717,0.717,0.717,0.717,0.498,0.492,0.596,0.632,0.626,0.644,0.737,0.71,0.698,0.692,0.698,0.696,0.702,0.702,0.702,0.702,0.702,0.702,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7,0.664,0.661,0.73,0.786,0.826,0.85,0.886,0.858,0.843,0.839,0.841,0.834,0.837,0.837,0.837,0.837,0.837,0.837,0.665,0.662,0.731,0.787,0.827,0.852,0.888,0.86,0.845,0.841,0.843,0.836,0.839,0.839,0.839,0.839,0.839,0.839,0.61,0.606,0.692,0.698,0.724,0.752,0.791,0.748,0.728,0.721,0.724,0.717,0.721,0.722,0.722,0.722,0.722,0.722,0.525,0.52,0.637,0.696,0.745,0.775,0.823,0.774,0.752,0.745,0.751,0.747,0.752,0.753,0.753,0.753,0.753,0.753,0.521,0.514,0.628,0.636,0.652,0.684,0.774,0.737,0.722,0.713,0.723,0.721,0.726,0.727,0.727,0.727,0.727,0.727,0.528,0.522,0.634,0.661,0.667,0.692,0.804,0.777,0.766,0.757,0.767,0.765,0.77,0.771,0.771,0.771,0.771,0.771,0.531,0.524,0.639,0.677,0.68,0.702,0.796,0.768,0.756,0.748,0.757,0.755,0.76,0.761,0.761,0.761,0.761,0.761,0.529,0.522,0.643,0.647,0.639,0.658,0.751,0.724,0.711,0.705,0.714,0.712,0.717,0.718,0.718,0.718,0.718,0.718,0.517,0.511,0.622,0.644,0.638,0.657,0.75,0.723,0.71,0.704,0.713,0.711,0.716,0.717,0.717,0.717,0.717,0.717,0.498,0.492,0.596,0.632,0.626,0.644,0.737,0.71,0.698,0.692,0.698,0.696,0.702,0.702,0.702,0.702,0.702,0.702,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7,0.498,0.493,0.594,0.63,0.624,0.641,0.733,0.706,0.694,0.689,0.696,0.694,0.699,0.7,0.7,0.7,0.7,0.7]},"noise":[{"k":2,"p":1,"ar":0.873,"ari":0.899},{"k":2,"p":2,"ar":0.848,"ari":0.898},{"k":2,"p":3,"ar":0.828,"ari":0.904},{"k":3,"p":1,"ar":0.8,"ari":0.853},{"k":3,"p":2,"ar":0.789,"ari":0.893},{"k":3,"p":3,"ar":0.762,"ari":0.911},{"k":4,"p":1,"ar":0.818,"ari":0.892},{"k":4,"p":2,"ar":0.774,"ari":0.9},{"k":4,"p":3,"ar":0.736,"ari":0.905}]};
+</script>
+<script>
+(function(){
+const NAMES=["Age","Anaemia","CPK enzyme","Diabetes","Ejection fraction","High blood pressure","Platelets","Serum creatinine","Serum sodium","Sex","Smoking"];
+const SHORT=["Age","Anaemia","CPK","Diabetes","Ejection frac.","High BP","Platelets","S. creatinine","S. sodium","Sex","Smoking"];
+const OPT=[0,4,7];
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const col=n=>new THREE.Color(cssv(n)||'#888');
+const key=a=>a.slice().sort((x,y)=>x-y).join(',');
+const rankOf={},eOf={};DATA.triples.forEach((t,i)=>{rankOf[key(t[0])]=i+1;eOf[key(t[0])]=t[1]});
+const HAS3D=typeof THREE!=='undefined';
+
+/* ---------- shared: renderer factory with drag-orbit ---------- */
+function makeScene(canvas,{dist=8,elev=0.35,target=[0,0,0],fov=40,autorotate=0.12}={}){
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(fov,1,0.1,200);
+  const S={renderer,scene,cam,yaw:0.6,pitch:elev,dist,target:new THREE.Vector3(...target),auto:reduce?0:autorotate,drag:false,visible:true,onFrame:null};
+  function place(){cam.position.set(S.target.x+S.dist*Math.cos(S.pitch)*Math.sin(S.yaw),S.target.y+S.dist*Math.sin(S.pitch),S.target.z+S.dist*Math.cos(S.pitch)*Math.cos(S.yaw));cam.lookAt(S.target)}
+  function size(){const r=canvas.parentElement.getBoundingClientRect();renderer.setSize(r.width,r.height,false);cam.aspect=r.width/Math.max(r.height,1);cam.updateProjectionMatrix()}
+  let px=0,py=0,moved=0;
+  canvas.addEventListener('pointerdown',e=>{S.drag=true;moved=0;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId)});
+  canvas.addEventListener('pointermove',e=>{if(!S.drag)return;const dx=e.clientX-px,dy=e.clientY-py;moved+=Math.abs(dx)+Math.abs(dy);px=e.clientX;py=e.clientY;S.yaw-=dx*0.008;S.pitch=Math.max(-0.2,Math.min(1.35,S.pitch+dy*0.006))});
+  canvas.addEventListener('pointerup',()=>{S.drag=false});
+  S.wasDrag=()=>moved>6;
+  new ResizeObserver(size).observe(canvas.parentElement);
+  new IntersectionObserver(es=>{S.visible=es[0].isIntersecting},{threshold:0}).observe(canvas);
+  size();place();
+  let last=performance.now();
+  S.loop=()=>{const now=performance.now(),dt=Math.min(0.05,(now-last)/1000);last=now;
+    if(S.visible){if(!S.drag)S.yaw+=S.auto*dt;place();S.onFrame&&S.onFrame(dt,now/1000);renderer.render(scene,cam)}
+    requestAnimationFrame(S.loop)};
+  S.renderOnce=()=>{place();S.onFrame&&S.onFrame(0,performance.now()/1000);renderer.render(scene,cam)};
+  S.project=v=>{const p=v.clone().project(cam);const r=canvas.getBoundingClientRect();return[(p.x+1)/2*r.width,(1-p.y)/2*r.height,p.z]};
+  S.lights=()=>{scene.add(new THREE.HemisphereLight(0xffffff,0x443333,0.75));const d=new THREE.DirectionalLight(0xffffff,0.9);d.position.set(4,7,6);scene.add(d);const r=new THREE.DirectionalLight(0xffffff,0.35);r.position.set(-6,2,-5);scene.add(r)};
+  return S;
+}
+
+/* ================= 1. DIGITAL TWIN ================= */
+const T=DATA.twin,nE=T.efs.length,nS=T.scs.length;
+function brk(arr,v){v=Math.min(Math.max(v,arr[0]),arr[arr.length-1]);let i=0;while(i<arr.length-2&&arr[i+1]<v)i++;return[i,Math.min(Math.max((v-arr[i])/(arr[i+1]-arr[i]),0),1)]}
+const P=(a,e,s)=>T.p[(a*nE+e)*nS+s];
+function risk(age,ef,sc){const[a,fa]=brk(T.ages,age),[e,fe]=brk(T.efs,ef),[s,fs]=brk(T.scs,sc);let r=0;
+  for(const[da,wa]of[[0,1-fa],[1,fa]])for(const[de,we]of[[0,1-fe],[1,fe]])for(const[ds,ws]of[[0,1-fs],[1,fs]])r+=wa*we*ws*P(a+da,e+de,s+ds);return r}
+const ageI=document.getElementById('age'),efI=document.getElementById('ef'),scI=document.getElementById('sc');
+const twinState={ef:38,sc:1.1,age:60,risk:0};
+
+if(HAS3D){
+  const S=makeScene(document.getElementById('twinCanvas'),{dist:12.5,elev:0.16,target:[-0.4,0.1,0],autorotate:0.18});S.lights();
+  const sc=S.scene;
+  // heart: deform a sphere along the classic heart curve
+  const hg=new THREE.SphereGeometry(1,128,96);const pa=hg.attributes.position;const v=new THREE.Vector3();
+  for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i);const rxy=Math.hypot(v.x,v.y),t=Math.atan2(v.x,v.y);
+    const hx=16*Math.pow(Math.sin(t),3),hy=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+    const s=0.11;let nx=hx*s*rxy,ny=(hy+3)*s*rxy,nz=v.z*1.25*(0.75+0.25*rxy);
+    nx+=0.12*Math.sin(ny*1.3);nz+=0.15*ny*0.2; // slight asymmetry, apex tilt
+    pa.setXYZ(i,nx,ny,nz)}
+  hg.computeVertexNormals();
+  const heartMat=new THREE.MeshPhysicalMaterial({color:col('--ecg'),roughness:0.42,metalness:0.0,clearcoat:0.6,clearcoatRoughness:0.35,sheen:0});
+  const heart=new THREE.Mesh(hg,heartMat);heart.rotation.z=-0.35;const heartG=new THREE.Group();heartG.add(heart);heartG.position.set(0,0.6,0);sc.add(heartG);
+  // coronary vessels on the surface
+  const vesMat=new THREE.MeshStandardMaterial({color:new THREE.Color(cssv('--ecg')).multiplyScalar(0.55),roughness:0.6});
+  // aorta arch + descending aorta, with flowing blood cells
+  const aortaCurve=new THREE.CatmullRomCurve3([[0.15,1.1,0],[0.25,2.2,0.1],[0.0,2.9,0],[-0.8,2.85,-0.2],[-1.25,2.2,-0.35],[-1.3,1.0,-0.5],[-1.25,-0.6,-0.6],[-1.2,-2.4,-0.6]].map(p=>new THREE.Vector3(...p)));
+  const aMat=new THREE.MeshPhysicalMaterial({color:new THREE.Color(cssv('--ecg')).lerp(new THREE.Color('#ffffff'),0.35),transparent:true,opacity:0.38,roughness:0.2,clearcoat:1,depthWrite:false});
+  sc.add(new THREE.Mesh(new THREE.TubeGeometry(aortaCurve,140,0.26,20,false),aMat));
+  // branches to kidneys
+  const kidL=new THREE.Vector3(-2.4,-2.1,-0.5),kidR=new THREE.Vector3(0.2,-2.1,-0.5);
+  const brL=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.22,-1.7,-0.6),new THREE.Vector3(-1.8,-1.9,-0.55),kidL.clone().add(new THREE.Vector3(0.35,0,0))]);
+  const brR=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.18,-1.7,-0.6),new THREE.Vector3(-0.5,-1.9,-0.55),kidR.clone().add(new THREE.Vector3(-0.35,0,0))]);
+  [brL,brR].forEach(c=>sc.add(new THREE.Mesh(new THREE.TubeGeometry(c,30,0.1,10,false),aMat)));
+  const NC=180;const cellG=new THREE.SphereGeometry(0.075,10,8);const cellM=new THREE.MeshStandardMaterial({color:col('--ecg'),emissive:col('--ecg'),emissiveIntensity:0.35,roughness:0.4});
+  const cells=new THREE.InstancedMesh(cellG,cellM,NC);sc.add(cells);
+  const cellT=Array.from({length:NC},(_,i)=>({u:i/NC,off:new THREE.Vector3((Math.random()-.5)*0.28,(Math.random()-.5)*0.28,(Math.random()-.5)*0.28),branch:i%9===0?(i%18===0?brL:brR):null,bu:Math.random()}));
+  // kidneys: bean-shaped
+  function bean(){const g=new THREE.SphereGeometry(0.62,64,48);const p=g.attributes.position;
+    for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);v.y*=1.55;v.z*=0.7;const dent=Math.exp(-(v.y*v.y)/0.35)*0.32;if(v.x>0)v.x-=dent*v.x*1.4;p.setXYZ(i,v.x,v.y,v.z)}
+    g.computeVertexNormals();return g}
+  const kMat=new THREE.MeshPhysicalMaterial({color:col('--ok'),roughness:0.45,clearcoat:0.4,emissive:col('--ok'),emissiveIntensity:0.1});
+  const kl=new THREE.Mesh(bean(),kMat);kl.position.copy(kidL);kl.rotation.z=0.25;kl.rotation.y=Math.PI;sc.add(kl);
+  const kr=new THREE.Mesh(bean(),kMat);kr.position.copy(kidR);kr.rotation.z=-0.25;sc.add(kr);
+  // risk halo
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(2.25,0.03,12,160),new THREE.MeshBasicMaterial({color:col('--ok'),transparent:true,opacity:0.8}));
+  halo.rotation.x=Math.PI/2;halo.position.y=0.4;sc.add(halo);
+  const haloDots=new THREE.Points(new THREE.BufferGeometry().setFromPoints(Array.from({length:90},(_,i)=>{const a=i/90*Math.PI*2;return new THREE.Vector3(Math.cos(a)*2.25,0,Math.sin(a)*2.25)})),new THREE.PointsMaterial({color:col('--ok'),size:0.09}));
+  haloDots.position.y=0.4;sc.add(haloDots);
+  // floor ECG grid
+  const grid=new THREE.GridHelper(14,28,col('--grid-major'),col('--grid'));grid.position.y=-3.2;grid.material.transparent=true;grid.material.opacity=0.8;sc.add(grid);
+
+  const tmp=new THREE.Object3D();
+  const strip=document.getElementById('ecgstrip'),sx=strip.getContext('2d');
+  const beatF=x=>{const g=(m,s,a)=>a*Math.exp(-((x-m)**2)/(2*s*s));return g(.06,.02,.12)-g(.13,.008,.15)+g(.15,.011,1)-g(.17,.01,.28)+g(.36,.04,.26)};
+  function drawStrip(t){const r=strip.getBoundingClientRect(),dpr=Math.min(devicePixelRatio,2);
+    if(strip.width!==Math.round(r.width*dpr)){strip.width=Math.round(r.width*dpr);strip.height=Math.round(r.height*dpr)}
+    const W=strip.width,H=strip.height;sx.clearRect(0,0,W,H);sx.lineWidth=2*dpr;sx.strokeStyle=cssv('--ecg');sx.lineJoin='round';
+    const amp=0.35+0.75*(twinState.ef/80),per=W/3.2,head=((t*72/60)*per)%W;sx.beginPath();
+    for(let x=0;x<=W;x+=2){const ph=(((x-head)/per)%1+1)%1;const y=H*0.72-beatF(ph)*H*0.62*amp;x?sx.lineTo(x,y):sx.moveTo(x,y)}
+    sx.globalAlpha=0.85;sx.stroke();sx.globalAlpha=1;
+    const grad=sx.createLinearGradient(head-60*dpr,0,head,0);grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(1,cssv('--ecg'));
+    sx.fillStyle=cssv('--ecg');sx.beginPath();const hp=0;sx.arc(head,H*0.72-beatF(hp)*H*0.62*amp,3*dpr,0,7);sx.fill()}
+  S.onFrame=(dt,t)=>{
+    drawStrip(t);
+    const bpm=72,ph=(t*bpm/60)%1;const sq=0.04+0.2*(twinState.ef/80);
+    const pulse=ph<0.16?Math.sin(ph/0.16*Math.PI):ph<0.3?0.25*Math.sin((ph-0.16)/0.14*Math.PI):0;
+    const s=1-sq*pulse;heartG.scale.set(s+0.02*pulse,s,s+0.02*pulse);heartG.rotation.y=0.08*pulse;
+    const flow=0.08+0.55*(twinState.ef/80)*(0.4+pulse);
+    cellT.forEach((c,i)=>{let p;
+      if(c.branch&&c.u>0.78){c.bu+=dt*flow*0.7;if(c.bu>1){c.bu=0;c.u=0}p=c.branch.getPointAt(Math.min(c.bu,1))}
+      else{c.u+=dt*flow*0.22;if(c.u>1)c.u-=1;p=aortaCurve.getPointAt(c.u)}
+      tmp.position.copy(p).add(c.off);tmp.updateMatrix();cells.setMatrixAt(i,tmp.matrix)});
+    cells.instanceMatrix.needsUpdate=true;
+    halo.rotation.z+=dt*0.25;haloDots.rotation.y-=dt*0.2;
+    kMat.emissiveIntensity=0.12+0.25*Math.min(1,(twinState.sc-0.5)/3)*(0.6+0.4*Math.sin(t*3));
+  };
+  twinState.apply=()=>{
+    const k=Math.min(1,(twinState.sc-0.5)/3);const kc=k<0.25?'--ok':k<0.6?'--warn':'--crit';kMat.color=col(kc);kMat.emissive=col(kc);
+    const r=twinState.risk,rc=r<0.25?'--ok':r<0.5?'--warn':'--crit';halo.material.color=col(rc);haloDots.material.color=col(rc);
+    heartMat.color=col('--ecg').lerp(new THREE.Color('#7a6a8a'),Math.max(0,(40-twinState.ef)/40)*0.35);
+  };
+  S.renderOnce();requestAnimationFrame(S.loop);
+}
+function updateTwin(){
+  const age=+ageI.value,ef=+efI.value,sc=+scI.value;Object.assign(twinState,{age,ef,sc});
+  document.getElementById('agev').textContent=age+' years';document.getElementById('efv').textContent=ef+' %';document.getElementById('scv').textContent=sc.toFixed(2)+' mg/dL';
+  document.getElementById('vEF').textContent=ef+'%';document.getElementById('vSC').textContent=sc.toFixed(2);
+  document.getElementById('vFlow').textContent=(ef*0.07).toFixed(1)+' L/min est.';
+  const r=risk(age,ef,sc);twinState.risk=r;
+  document.getElementById('riskval').textContent=(100*r).toFixed(0)+' %';
+  const pill=document.getElementById('riskpill'),lvl=r<0.25?['low','var(--ok)']:r<0.5?['moderate','var(--warn)']:['high','var(--crit)'];pill.textContent=lvl[0];pill.style.color=lvl[1];
+  twinState.apply&&twinState.apply();
+  const MED={age:60,ef:38,sc:1.1};const rows=[['Age','age',age+' y'],['Ejection fraction','ef',ef+' %'],['Serum creatinine','sc',sc.toFixed(2)]];
+  document.getElementById('drivers').innerHTML=rows.map(([lab,k,val])=>{const cf=Object.assign({age,ef,sc},{[k]:MED[k]});const d=r-risk(cf.age,cf.ef,cf.sc);
+    const w=Math.min(50,Math.abs(d)*100);const left=d>=0?50:50-w;const c=d>=0?'var(--crit)':'var(--ok)';
+    return `<div class="drv"><span>${lab} <span class="muted">${val}</span></span><span class="axis"><i style="left:${left}%;width:${w}%;background:${c}"></i></span><b style="color:${Math.abs(d)<0.005?'var(--ink-soft)':c}">${d>=0?'+':'−'}${Math.abs(100*d).toFixed(0)} pts</b></div>`}).join('');
+}
+[ageI,efI,scI].forEach(i=>i.addEventListener('input',updateTwin));
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{const[a,e,s]=b.dataset.preset.split(',');ageI.value=a;efI.value=e;scI.value=s;updateTwin()});
+{const q=new URLSearchParams(location.search);if(q.has('age')){ageI.value=q.get('age');efI.value=q.get('ef');scI.value=q.get('sc');updateTwin()}}
+updateTwin();
+
+/* ================= 2. QUANTUM REGISTER ================= */
+let depth=2;const sel=new Set(OPT);
+const regTags=[];let regApi={};
+if(HAS3D){
+  const stage=document.getElementById('regStage');
+  const S=makeScene(document.getElementById('regCanvas'),{dist:15.5,elev:0.42,target:[0,1.1,0],autorotate:0.1});S.lights();
+  const sc=S.scene,RAD=4.2;
+  const pos=NAMES.map((_,i)=>{const a=i/11*Math.PI*2;return new THREE.Vector3(Math.sin(a)*RAD,0,Math.cos(a)*RAD)});
+  // base disc
+  const disc=new THREE.Mesh(new THREE.CylinderGeometry(RAD+1.1,RAD+1.1,0.12,96),new THREE.MeshStandardMaterial({color:col('--sheet'),roughness:0.9}));disc.position.y=-0.75;sc.add(disc);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(RAD,0.02,8,160),new THREE.MeshBasicMaterial({color:col('--rule')}));ring.rotation.x=Math.PI/2;ring.position.y=-0.66;sc.add(ring);
+  // couplers (redundancy)
+  const maxR=Math.max(...DATA.R.flat());const couplers=[];
+  for(let i=0;i<11;i++)for(let j=i+1;j<11;j++){const r=DATA.R[i][j]/maxR;if(r<0.1)continue;
+    const a=pos[i],b=pos[j],mid=a.clone().add(b).multiplyScalar(0.5);mid.y=-0.2+0.9*r;
+    const curve=new THREE.QuadraticBezierCurve3(a.clone().setY(-0.35),mid,b.clone().setY(-0.35));
+    const m=new THREE.MeshBasicMaterial({color:col('--quantum'),transparent:true,opacity:0.12+0.55*r,depthWrite:false});
+    const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,24,0.012+0.05*r,6,false),m);sc.add(mesh);couplers.push({mesh,i,j,base:0.12+0.55*r})}
+  // qubits
+  const qMeshes=[],cols=[],glows=[];
+  const qGeo=new THREE.SphereGeometry(0.42,40,30),colGeo=new THREE.CylinderGeometry(0.16,0.16,1,24);colGeo.translate(0,0.5,0);
+  NAMES.forEach((n,i)=>{
+    const m=new THREE.MeshPhysicalMaterial({color:col('--quantum'),roughness:0.25,clearcoat:1,emissive:col('--quantum'),emissiveIntensity:0.05});
+    const q=new THREE.Mesh(qGeo,m);q.position.copy(pos[i]).setY(-0.3);q.userData.i=i;sc.add(q);qMeshes.push(q);
+    const cm=new THREE.MeshStandardMaterial({color:col('--quantum'),transparent:true,opacity:0.75,roughness:0.4,emissive:col('--quantum'),emissiveIntensity:0.15});
+    const c=new THREE.Mesh(colGeo,cm);c.position.copy(pos[i]).setY(0.15);c.scale.y=0.001;sc.add(c);cols.push(c);
+    const g=new THREE.Mesh(new THREE.SphereGeometry(0.62,24,18),new THREE.MeshBasicMaterial({color:col('--ecg'),transparent:true,opacity:0,depthWrite:false}));g.position.copy(q.position);sc.add(g);glows.push(g);
+    const tag=document.createElement('div');tag.className='tag';tag.textContent=SHORT[i];stage.appendChild(tag);regTags.push(tag);
+  });
+  let targetH=DATA.qaoa[depth].marg.slice(),curH=new Array(11).fill(0),flash=new Array(11).fill(0);
+  S.onFrame=(dt,t)=>{
+    for(let i=0;i<11;i++){curH[i]+=(targetH[i]*2.8-curH[i])*Math.min(1,dt*5||1);cols[i].scale.y=Math.max(0.001,curH[i]);
+      flash[i]=Math.max(0,flash[i]-dt*3);glows[i].material.opacity=0.45*flash[i];glows[i].scale.setScalar(1+0.4*flash[i]);
+      const on=sel.has(i);qMeshes[i].material.color=col(on?'--ecg':'--quantum');qMeshes[i].material.emissive=col(on?'--ecg':'--quantum');
+      qMeshes[i].material.emissiveIntensity=on?0.35+0.15*Math.sin(t*3):0.05;
+      qMeshes[i].position.y=-0.3+(on?0.08*Math.sin(t*2+i):0);
+      const [x,y,z]=S.project(pos[i].clone().setY(-1.05));regTags[i].style.left=x+'px';regTags[i].style.top=y+'px';regTags[i].style.opacity=z<1?1:0;regTags[i].classList.toggle('on',on)}
+    couplers.forEach(c=>{const both=sel.has(c.i)&&sel.has(c.j);c.mesh.material.color=col(both?'--ecg':'--quantum');c.mesh.material.opacity=both?Math.min(1,c.base+0.3):c.base});
+  };
+  regApi.setMarg=m=>{targetH=m.slice()};
+  regApi.flash=s=>s.forEach(i=>flash[i]=1);
+  // picking
+  const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();const cv=document.getElementById('regCanvas');
+  cv.addEventListener('pointerup',e=>{if(S.wasDrag())return;const r=cv.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,S.cam);
+    const hit=ray.intersectObjects(qMeshes)[0];if(hit){const i=hit.object.userData.i;sel.has(i)?sel.delete(i):(sel.size<3&&sel.add(i));renderSel()}});
+  cv.addEventListener('pointermove',e=>{if(S.drag)return;const r=cv.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,S.cam);cv.style.cursor=ray.intersectObjects(qMeshes).length?'pointer':'grab'});
+  S.renderOnce();requestAnimationFrame(S.loop);
+}
+function renderSel(){const a=[...sel].sort((x,y)=>x-y);
+  if(a.length===3){const k=key(a);document.getElementById('selname').textContent=a.map(i=>SHORT[i]).join(' + ');document.getElementById('selrank').textContent=rankOf[k]===1?'1 · optimum':rankOf[k];document.getElementById('selE').textContent=eOf[k].toFixed(3)}
+  else{document.getElementById('selname').textContent=a.length?`${a.length} chosen, ${3-a.length} to go`:'Pick 3 qubits';document.getElementById('selrank').textContent='—';document.getElementById('selE').textContent='—'}}
+document.getElementById('bestE').textContent=DATA.triples[0][1].toFixed(3);
+document.getElementById('clear').onclick=()=>{sel.clear();renderSel()};
+document.getElementById('showopt').onclick=()=>{sel.clear();OPT.forEach(i=>sel.add(i));renderSel()};
+renderSel();
+
+// histogram + shot replay
+const barsBox=document.getElementById('bars');let barRows=[];
+function buildBars(counts){
+  const D=DATA.qaoa[depth];barsBox.innerHTML='';barRows=[];
+  D.top.slice(0,8).forEach(([s])=>{const row=document.createElement('div');row.className='bar'+(key(s)===key(OPT)?' opt':'');
+    const lbl=s.map(i=>SHORT[i]).join(' + ')||'(none)';
+    row.innerHTML=`<span class="lbl" title="${lbl}">${lbl}${s.length!==3?' <span class="muted">('+s.length+')</span>':''}</span><span class="track"><span class="fill"></span></span><span class="pc">0%</span>`;
+    barsBox.appendChild(row);barRows.push({row,s})});
+  setBars(counts);
+}
+function setBars(counts,total=2000){const max=Math.max(1,...barRows.map((_,i)=>counts[i]));barRows.forEach(({row},i)=>{row.querySelector('.fill').style.width=(100*counts[i]/DATA.qaoa[depth].top[0][1]).toFixed(1)+'%';row.querySelector('.pc').textContent=(100*counts[i]/Math.max(total,1)).toFixed(1)+'%'})}
+function fullCounts(){return DATA.qaoa[depth].top.slice(0,8).map(t=>t[1])}
+let firing=null;
+function fire(){
+  if(firing)cancelAnimationFrame(firing);
+  const D=DATA.qaoa[depth];const pool=[];D.top.forEach(([s,c])=>{for(let k=0;k<c;k++)pool.push(s)});for(let k=0;k<D.other;k++)pool.push(null);
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+  const counts=new Array(8).fill(0),marg=new Array(11).fill(0),idx=new Map(D.top.slice(0,8).map(([s],i)=>[key(s),i]));
+  let n=0;regApi.setMarg&&regApi.setMarg(new Array(11).fill(0));
+  const btn=document.getElementById('fire');btn.disabled=true;
+  const step=()=>{const batch=n<40?1:n<200?6:n<800?18:40;
+    for(let b=0;b<batch&&n<pool.length;b++,n++){const s=pool[n];
+      if(s){const k=idx.get(key(s));if(k!==undefined)counts[k]++;s.forEach(i=>marg[i]++);if(b===0&&regApi.flash)regApi.flash(s)}
+      else{for(let i=0;i<11;i++)if(Math.random()<D.marg[i]*0.6)marg[i]++}}
+    document.getElementById('shotN').textContent=n;setBars(counts,n);
+    regApi.setMarg&&regApi.setMarg(marg.map(m=>m/Math.max(n,1)));
+    if(n<pool.length&&!reduce)firing=requestAnimationFrame(step);
+    else{document.getElementById('shotN').textContent='2000';setBars(fullCounts());regApi.setMarg&&regApi.setMarg(D.marg);btn.disabled=false;firing=null}};
+  step();
+}
+document.getElementById('fire').onclick=fire;
+document.querySelectorAll('.depth').forEach(b=>b.onclick=()=>{document.querySelectorAll('.depth').forEach(x=>x.setAttribute('aria-pressed',x===b));depth=+b.dataset.p;if(firing){cancelAnimationFrame(firing);firing=null;document.getElementById('fire').disabled=false}
+  document.getElementById('shotN').textContent='2000';buildBars(fullCounts());regApi.setMarg&&regApi.setMarg(DATA.qaoa[depth].marg)});
+buildBars(fullCounts());
+
+/* ================= 3. LANDSCAPE ================= */
+if(HAS3D){
+  const stage=document.getElementById('landStage'),tip=document.getElementById('landTip');
+  const S=makeScene(document.getElementById('landCanvas'),{dist:15,elev:0.32,target:[0,1.8,0],autorotate:0.07});S.lights();
+  const sc=S.scene;
+  const pts=DATA.triples.map(([s,E])=>{const rel=s.reduce((a,i)=>a+DATA.I[i],0);let red=0;for(let a=0;a<3;a++)for(let b=a+1;b<3;b++)red+=DATA.R[s[a]][s[b]];return{s,E,rel,red}});
+  const rMin=Math.min(...pts.map(p=>p.rel)),rMax=Math.max(...pts.map(p=>p.rel)),dMin=Math.min(...pts.map(p=>p.red)),dMax=Math.max(...pts.map(p=>p.red)),eMin=Math.min(...pts.map(p=>p.E)),eMax=Math.max(...pts.map(p=>p.E));
+  const W=9,Dp=6,H=5;const redRank=new Map(pts.slice().sort((a,b)=>a.red-b.red).map((p,i)=>[p,i/(pts.length-1)]));
+  const sampled=new Set(DATA.qaoa[2].top.filter(t=>t[0].length===3&&t[1]>=20).map(t=>key(t[0])));
+  // floor + axes
+  const floor=new THREE.GridHelper(12,24,col('--grid-major'),col('--grid'));floor.position.y=0;sc.add(floor);
+  const axMat=new THREE.LineBasicMaterial({color:col('--ink-soft')});
+  const ax=(a,b)=>sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a),new THREE.Vector3(...b)]),axMat));
+  ax([-W/2,0,Dp/2],[W/2,0,Dp/2]);ax([-W/2,0,Dp/2],[-W/2,0,-Dp/2]);ax([-W/2,0,Dp/2],[-W/2,H+0.4,Dp/2]);
+  const g=new THREE.SphereGeometry(0.11,16,12),stemM=new THREE.LineBasicMaterial({color:col('--rule'),transparent:true,opacity:0.7});
+  const meshes=[];
+  pts.forEach(p=>{const isOpt=key(p.s)===key(OPT),isS=sampled.has(key(p.s));
+    const x=-W/2+W*(p.rel-rMin)/(rMax-rMin),z=Dp/2-Dp*redRank.get(p),y=H*(eMax-p.E)/(eMax-eMin);
+    const m=new THREE.Mesh(isOpt?new THREE.SphereGeometry(0.26,32,24):g,new THREE.MeshPhysicalMaterial({color:col(isOpt?'--ecg':isS?'--quantum':'--ink-soft'),roughness:0.3,clearcoat:0.8,emissive:col(isOpt?'--ecg':'--quantum'),emissiveIntensity:isOpt?0.4:isS?0.15:0}));
+    m.position.set(x,y,z);m.userData=p;sc.add(m);meshes.push(m);
+    sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,0,z),new THREE.Vector3(x,y,z)]),stemM));
+    if(isOpt){const beacon=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.18,H*0.25,16,1,true),new THREE.MeshBasicMaterial({color:col('--ecg'),transparent:true,opacity:0.25,side:THREE.DoubleSide,depthWrite:false}));beacon.position.set(x,y+H*0.16,z);sc.add(beacon);m.userData.beacon=beacon}});
+  const optM=meshes.find(m=>key(m.userData.s)===key(OPT));
+  const votes=new Map(DATA.qaoa[2].top.filter(t=>t[0].length===3).map(t=>[key(t[0]),t[1]]));const vmax=Math.max(...votes.values());
+  let byVotes=false;const vb=document.getElementById('votes');
+  vb.onclick=()=>{byVotes=!byVotes;vb.setAttribute('aria-pressed',byVotes);meshes.forEach(m=>{if(m===optM)return;const v=votes.get(key(m.userData.s))||0;m.userData.vs=byVotes?(v?1+3.2*Math.sqrt(v/vmax):0.45):1;m.scale.setScalar(m.userData.vs)})};
+  const labels=[['more useful information →',[0,-0.1,Dp/2+0.9]],['more overlap (ranked) →',[-W/2-0.3,-0.1,-Dp/2-0.6]],['QUBO score',[-W/2-0.2,H+0.9,Dp/2]]].map(([t,p])=>{const d=document.createElement('div');d.className='tag';d.style.color='var(--ink-soft)';d.textContent=t;stage.appendChild(d);return[d,new THREE.Vector3(...p)]});
+  const optTag=document.createElement('div');optTag.className='tag on';optTag.textContent='optimum · Age + EF + S. creatinine';stage.appendChild(optTag);
+  S.onFrame=(dt,t)=>{labels.forEach(([d,p])=>{const[x,y,z]=S.project(p);d.style.left=x+'px';d.style.top=y+'px';d.style.opacity=z<1?1:0});
+    const[x,y]=S.project(optM.position.clone().add(new THREE.Vector3(0,0.75,0)));optTag.style.left=x+'px';optTag.style.top=y+'px';
+    optM.scale.setScalar(1+0.12*Math.sin(t*3));if(optM.userData.beacon)optM.userData.beacon.material.opacity=0.18+0.12*Math.sin(t*3)};
+  const ray=new THREE.Raycaster(),mouse=new THREE.Vector2(),cv=document.getElementById('landCanvas');let hovered=null;
+  cv.addEventListener('pointermove',e=>{if(S.drag){tip.hidden=true;return}const r=cv.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,S.cam);
+    const h=ray.intersectObjects(meshes)[0];if(hovered&&hovered!==optM)hovered.scale.setScalar(hovered.userData.vs||1);
+    if(h){hovered=h.object;hovered!==optM&&hovered.scale.setScalar((hovered.userData.vs||1)*1.8);const p=h.object.userData;tip.hidden=false;const nv=votes.get(key(p.s))||0;
+      tip.innerHTML=`<b>${p.s.map(i=>SHORT[i]).join(' + ')}</b><br>rank ${rankOf[key(p.s)]} of 165 · energy ${p.E.toFixed(3)}<br>QAOA votes (p = 2): ${nv} of 2000`;
+      let lx=e.clientX-r.left+14,ly=e.clientY-r.top+14;if(lx>r.width-250)lx-=270;tip.style.left=lx+'px';tip.style.top=ly+'px';cv.style.cursor='pointer'}
+    else{tip.hidden=true;cv.style.cursor='grab';hovered=null}});
+  cv.addEventListener('pointerleave',()=>{tip.hidden=true});
+  S.renderOnce();requestAnimationFrame(S.loop);
+}
+if(!HAS3D){document.querySelectorAll('.stage').forEach(s=>{const p=document.createElement('p');p.className='muted';p.style.padding='24px';p.textContent='The 3D view needs WebGL and the three.js library, which did not load here.';s.appendChild(p)})}
+
+/* ================= circuit schematic ================= */
+const CSTATS={1:{d:67,cx:110,g:265,rd:406,r2:232},2:{d:106,cx:220,g:496,rd:709,r2:452},3:{d:145,cx:330,g:727,rd:1079,r2:676}};
+function drawCircuit(p){const svg=document.getElementById('circ');svg.innerHTML='';const NSs="http://www.w3.org/2000/svg";
+  const E=(t,a,txt)=>{const e=document.createElementNS(NSs,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;svg.appendChild(e);return e};
+  const top=26,gap=23,L=128,blockW=150,mixW=70,W=L+60+p*(blockW+mixW+30)+70;svg.setAttribute('viewBox',`0 0 ${Math.max(W,620)} ${top+gap*11+20}`);
+  for(let i=0;i<11;i++){const y=top+i*gap;E('text',{x:L-14,y:y+4,'text-anchor':'end',fill:OPT.includes(i)?'var(--ecg)':'var(--ink)'},`q${i} ${SHORT[i]}`);E('line',{x1:L,x2:W-20,y1:y,y2:y,stroke:'var(--rule)','stroke-width':1.2})}
+  const box=(x,w,lab,fill,stroke,txtc)=>{E('rect',{x,y:top-12,width:w,height:gap*10+24,rx:4,fill,stroke,'stroke-width':1.2});E('text',{x:x+w/2,y:top-16,'text-anchor':'middle',fill:txtc},lab)};
+  let x=L+8;for(let i=0;i<11;i++){E('rect',{x,y:top+i*gap-8,width:18,height:16,rx:2,fill:'var(--sheet)',stroke:'var(--ink)'});E('text',{x:x+9,y:top+i*gap+4,'text-anchor':'middle'},'H')}x+=34;
+  for(let l=1;l<=p;l++){box(x,blockW,`cost layer γ${l}`,'var(--quantum-soft)','var(--quantum)','var(--quantum)');
+    let n=0;for(let i=0;i<11;i++)for(let j=i+1;j<11;j++){if(DATA.R[i][j]<0.08)continue;const cx0=x+10+(n%13)*10.5;n++;
+      E('line',{x1:cx0,x2:cx0,y1:top+i*gap,y2:top+j*gap,stroke:'var(--quantum)','stroke-width':1,'stroke-opacity':0.55});E('circle',{cx:cx0,cy:top+i*gap,r:2.6,fill:'var(--quantum)'});E('circle',{cx:cx0,cy:top+j*gap,r:2.6,fill:'var(--quantum)'})}
+    x+=blockW+10;box(x,mixW,`mixer β${l}`,'var(--sheet)','var(--ecg)','var(--ecg)');
+    for(let i=0;i<11;i++){E('rect',{x:x+14,y:top+i*gap-8,width:42,height:16,rx:2,fill:'var(--sheet)',stroke:'var(--ecg)'});E('text',{x:x+35,y:top+i*gap+4,'text-anchor':'middle',fill:'var(--ecg)'},'RX')}x+=mixW+20}
+  for(let i=0;i<11;i++){const y=top+i*gap;E('rect',{x:x+4,y:y-8,width:22,height:16,rx:2,fill:'var(--ink)'});E('path',{d:`M${x+8} ${y+4} q7 -10 14 0`,fill:'none',stroke:'var(--sheet)','stroke-width':1.2})}
+  const s=CSTATS[p];document.getElementById('circstats').innerHTML=`<span>qubits <b>11</b></span><span>angles to tune <b>${2*p}</b></span><span>ideal depth <b>${s.d}</b> · CX gates <b>${s.cx}</b></span><span>on IBM Heron after routing: depth <b>${s.rd}</b> · two-qubit gates <b>${s.r2}</b></span>`}
+document.querySelectorAll('.cdepth').forEach(b=>b.onclick=()=>{document.querySelectorAll('.cdepth').forEach(x=>x.setAttribute('aria-pressed',x===b));drawCircuit(+b.dataset.p)});
+drawCircuit(2);
+
+/* ================= 4. 2D charts ================= */
+const NS="http://www.w3.org/2000/svg";const el=(t,a={},p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e};
+const MCC=[["Age + EF + S. creatinine","QAOA · QUBO optimum",0.430,0.108,true],["EF + S. creatinine","QAOA · published panel",0.398,0.116,true],["Age + EF + S. creat. + Na","QAOA · 4-measurement",0.371,0.122,true],["All 11 measurements","reference",0.365,0.114,false],["EF + platelets + S. creatinine","RFE (classical)",0.362,0.117,false],["Anaemia + high BP + S. creatinine","greedy mRMR (classical)",0.225,0.115,false]];
+(function(){const svg=document.getElementById('mccchart'),L=215,R=500,top=14,rowH=44,x=v=>L+(R-L)*v/0.6;
+  for(let k=0;k<=6;k++){const v=k/10,xx=x(v);el('line',{x1:xx,y1:top-4,x2:xx,y2:top+rowH*MCC.length,stroke:'var(--rule)'},svg);el('text',{x:xx,y:top+rowH*MCC.length+16,'text-anchor':'middle',class:'soft'},svg).textContent=v.toFixed(1)}
+  MCC.forEach(([lab,src,m,ci,q],i)=>{const y=top+i*rowH;el('text',{x:L-8,y:y+16,'text-anchor':'end'},svg).textContent=lab;el('text',{x:L-8,y:y+30,'text-anchor':'end',class:'soft'},svg).textContent=src;
+    el('rect',{x:L,y:y+8,width:(x(m)-L).toFixed(1),height:22,fill:q?'var(--quantum)':'var(--ink-soft)',rx:2},svg);el('line',{x1:x(m-ci),x2:x(m+ci),y1:y+19,y2:y+19,stroke:'var(--ink)','stroke-width':1.5},svg);el('text',{x:x(m+ci)+6,y:y+23},svg).textContent=m.toFixed(3)});
+  el('text',{x:(L+R)/2,y:top+rowH*MCC.length+32,'text-anchor':'middle',class:'soft'},svg).textContent='MCC'})();
+(function(){const svg=document.getElementById('noisechart'),L=50,R=400,T0=16,B=250,x=p=>L+(R-L)*(p-1)/2,y=v=>B-(B-T0)*(v-0.7)/(0.25);
+  for(let k=0;k<=5;k++){const v=0.7+k*0.05;el('line',{x1:L,x2:R,y1:y(v),y2:y(v),stroke:'var(--rule)'},svg);el('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'soft'},svg).textContent=v.toFixed(2)}
+  [1,2,3].forEach(p=>el('text',{x:x(p),y:B+18,'text-anchor':'middle',class:'soft'},svg).textContent='p = '+p);
+  const rows=DATA.noise.filter(r=>r.k===3).sort((a,b)=>a.p-b.p);
+  const line=(k,c,d)=>{el('polyline',{points:rows.map(r=>`${x(r.p)},${y(r[k])}`).join(' '),fill:'none',stroke:c,'stroke-width':2.4,'stroke-dasharray':d||''},svg);rows.forEach(r=>el('circle',{cx:x(r.p),cy:y(r[k]),r:4,fill:c},svg))};
+  line('ari','var(--ink-soft)','6 5');line('ar','var(--ecg)');const l=rows[rows.length-1];
+  el('text',{x:x(3)-6,y:y(l.ari)-10,'text-anchor':'end',class:'soft'},svg).textContent='perfect simulator';
+  const t=el('text',{x:x(3)-6,y:y(l.ar)+20,'text-anchor':'end',fill:'var(--ecg)'},svg);t.textContent='IBM Heron noise model';
+  el('text',{x:14,y:(T0+B)/2,'text-anchor':'middle',class:'soft',transform:`rotate(-90 14 ${(T0+B)/2})`},svg).textContent='approximation ratio';
+  el('text',{x:(L+R)/2,y:B+38,'text-anchor':'middle',class:'soft'},svg).textContent='QAOA depth'})();
+})();
+</script>
+
+<script>
+(()=>{const D={1:{p:'Age + ejection fraction + serum creatinine',c:'$202.42 (echo + metabolic panel)',m:'0.430 ± 0.108',d:'this is the full panel'},
+0:{p:'Age + serum creatinine + serum sodium',c:'$4.57 (one metabolic panel, 44× cheaper)',m:'0.317 ± 0.123',d:'−0.112, corrected p = 0.10 (not separable on 299 patients)'}};
+const bs=document.querySelectorAll('.echobtn');function set(e){const r=D[e];echoPanel.textContent=r.p;echoCost.textContent=r.c;echoMcc.textContent=r.m;echoDelta.textContent=r.d;bs.forEach(b=>b.setAttribute('aria-pressed',b.dataset.echo==e))}
+bs.forEach(b=>b.addEventListener('click',()=>set(b.dataset.echo)));set('1')})();
+</script>
+</body>
+</html>
