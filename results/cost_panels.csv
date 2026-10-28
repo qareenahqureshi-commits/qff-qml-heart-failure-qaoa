@@ -1,0 +1,7 @@
+panel,k,cost_usd,needs_echo,MCC,MCC_ci95_corrected,delta_vs_k3_panel,p_corrected_vs_k3_panel
+high_blood_pressure+serum_creatinine,2,4.57,False,0.2329,0.1268,-0.1967,0.0042
+ejection_fraction+serum_creatinine,2,202.42,True,0.3979,0.1158,-0.0317,0.5736
+age+serum_creatinine+serum_sodium,3,4.57,False,0.3174,0.1227,-0.1122,0.0986
+age+ejection_fraction+serum_creatinine,3,202.42,True,0.4296,0.1078,,
+age+high_blood_pressure+serum_creatinine+serum_sodium,4,4.57,False,0.3095,0.1126,-0.1201,0.0498
+age+ejection_fraction+serum_creatinine+serum_sodium,4,202.42,True,0.3709,0.1215,-0.0587,0.1921

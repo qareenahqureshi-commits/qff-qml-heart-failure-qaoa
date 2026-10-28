@@ -2,10 +2,18 @@
 
 All QUBO solvers return a dict with the sampled bitstrings so the same optimiser metrics
 (approximation ratio, P(optimum), feasibility, Jaccard) can be computed for every solver.
+
+Two random baselines:
+  * random_sampling: uniform over all 2^n bitstrings (the original lower bound)
+  * random_feasible: uniform over the C(n, k) panels of exactly k features. This is the fair baseline for
+    a sampler, because with k fixed there are only 165 panels at k = 3. "Found the optimum somewhere in
+    2000 samples" is nearly guaranteed for it, which is why the enrichment columns below are reported.
 """
 from __future__ import annotations
 
 import time
+from itertools import combinations
+from math import comb
 
 import numpy as np
 import pandas as pd
@@ -20,6 +28,14 @@ from .qubo import QUBO, mi_terms
 # ----------------------------------------------------------------------------- QUBO solvers
 def random_sampling(q: QUBO, n_samples: int, rng: np.random.Generator):
     xs = rng.integers(0, 2, size=(n_samples, q.n))
+    return {"samples": xs, "energies": np.array([q.energy(x) for x in xs])}
+
+
+def random_feasible(q: QUBO, n_samples: int, rng: np.random.Generator):
+    """Uniform over panels with exactly q.k features."""
+    pick = np.argsort(rng.random((n_samples, q.n)), axis=1)[:, :q.k]
+    xs = np.zeros((n_samples, q.n), dtype=int)
+    np.put_along_axis(xs, pick, 1, axis=1)
     return {"samples": xs, "energies": np.array([q.energy(x) for x in xs])}
 
 
@@ -107,22 +123,75 @@ def rf_importance_topk(X: pd.DataFrame, y: np.ndarray, k: int, seed: int = 0) ->
 def optimiser_metrics(q: QUBO, samples: np.ndarray, energies: np.ndarray, x_opt: np.ndarray, e_opt: float,
                       e_max: float) -> dict:
     """Approximation ratio (normalised so optimum -> 1, worst -> 0), P(optimum), feasibility
-    (fraction of samples with exactly k ones), Jaccard overlap of best sample with x_opt."""
+    (fraction of samples with exactly k ones), Jaccard overlap of best sample with x_opt.
+
+    enrichment_uniform  = P(optimum) / (1 / 2^n): how much more often than a uniform random bitstring
+    enrichment_feasible = P(optimum) / (1 / C(n,k)): how much more often than a uniform random k panel
+    top5_by_count       = optimum among the 5 most frequently sampled distinct subsets
+    approx_ratio_feasible_mean = mean approximation ratio over the shots that are valid k panels, normalised
+        on the k panel set (worst k panel -> 0, optimum -> 1). Unlike approx_ratio_mean it gives no credit for
+        near optimal panels of the wrong size, so it compares the X mixer and the XY mixer fairly.
+    """
     ar = (e_max - energies) / (e_max - e_opt)
     opt_hits = np.all(samples == x_opt, axis=1)
     feasible = samples.sum(1) == q.k
     best = samples[int(np.argmin(energies))]
     inter = np.sum((best == 1) & (x_opt == 1))
     union = np.sum((best == 1) | (x_opt == 1))
+    keys, counts = np.unique(samples, axis=0, return_counts=True)
+    top = keys[np.argsort(-counts, kind="stable")[:5]]
+    p_opt = float(opt_hits.mean())
+    ef_max = _worst_panel_energy(q)
+    fe = energies[feasible]
+    ar_feas = float(((ef_max - fe) / (ef_max - e_opt)).mean()) if feasible.any() else float("nan")
     return {
         "approx_ratio_mean": float(ar.mean()),
+        "approx_ratio_feasible_mean": ar_feas,
         "approx_ratio_best": float(ar.max()),
-        "p_optimum": float(opt_hits.mean()),
+        "p_optimum": p_opt,
+        "enrichment_uniform": p_opt * 2 ** q.n,
+        "enrichment_feasible": p_opt * comb(q.n, q.k),
         "feasibility": float(feasible.mean()),
         "jaccard_best_vs_opt": float(inter / union) if union else 1.0,
+        "top5_by_count": bool(np.any(np.all(top == x_opt, axis=1))),
         "best_energy": float(energies.min()),
         "best_features": "+".join(f for f, b in zip(q.features, best) if b),
     }
+
+
+def _worst_panel_energy(q: QUBO) -> float:
+    """Highest QUBO energy among panels of exactly q.k features (cached on the QUBO object)."""
+    cache = getattr(q, "_worst_panel_energy", None)
+    if cache is None or cache[0] is not q.Q:
+        worst = -np.inf
+        for idx in combinations(range(q.n), q.k):
+            x = np.zeros(q.n)
+            x[list(idx)] = 1
+            worst = max(worst, q.energy(x))
+        q._worst_panel_energy = cache = (q.Q, worst)
+    return cache[1]
+
+
+def summarise_optimiser_runs(df: pd.DataFrame, group_cols: list[str], n: int = 11) -> pd.DataFrame:
+    """Mean over seeds per configuration. Enrichment is computed from the mean P(optimum) so that it reads
+    as "this solver samples the optimum E times more often than the random baseline"."""
+    agg = dict(AR_mean=("approx_ratio_mean", "mean"), AR_std=("approx_ratio_mean", "std"),
+               AR_best=("approx_ratio_best", "mean"), P_opt=("p_optimum", "mean"), P_opt_std=("p_optimum", "std"),
+               feasibility=("feasibility", "mean"), jaccard=("jaccard_best_vs_opt", "mean"),
+               found_opt_frac=("jaccard_best_vs_opt", lambda s: (s == 1).mean()))
+    if "approx_ratio_feasible_mean" in df:
+        agg["AR_feasible"] = ("approx_ratio_feasible_mean", "mean")
+    if "top5_contains_opt" in df:
+        agg["top5_frac"] = ("top5_contains_opt", "mean")
+    if "top5_by_count" in df:
+        agg["top5_by_count_frac"] = ("top5_by_count", "mean")
+    if "n_evals" in df:
+        agg["n_evals"] = ("n_evals", "mean")
+    agg["wall_s"] = ("wall_s", "mean")
+    out = df.groupby(group_cols).agg(**agg).reset_index()
+    out["enrich_vs_uniform"] = out.P_opt * 2 ** n
+    out["enrich_vs_random_panel"] = out.P_opt * out.k.map(lambda k: comb(n, int(k)))
+    return out.round(4)
 
 
 def timed(fn, *a, **kw):

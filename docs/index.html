@@ -248,7 +248,7 @@ button:disabled{opacity:.45;cursor:default}
   <span class="eyebrow">Results · measured, not illustrative</span>
   <h2 id="res">Did the quantum pick hold up?</h2>
   <div class="charts">
-    <div class="chart"><h3>Prediction quality by panel</h3><p class="muted" style="font-size:.86rem">Matthews correlation (MCC), random forest, mean of 100 splits with 95 % intervals.</p><svg id="mccchart" viewBox="0 0 520 300" role="img" aria-label="MCC by feature panel"></svg></div>
+    <div class="chart"><h3>Prediction quality by panel</h3><p class="muted" style="font-size:.86rem">Matthews correlation (MCC), random forest, mean of 100 splits. Lines are 95 % intervals corrected for the overlap between splits (Nadeau &amp; Bengio), so panels within about 0.1 of each other are not separable on 299 patients.</p><svg id="mccchart" viewBox="0 0 520 300" role="img" aria-label="MCC by feature panel"></svg></div>
     <div class="chart"><h3>On a noisy quantum chip</h3><p class="muted" style="font-size:.86rem">Average sample quality, simulated IBM Heron chip (solid) vs perfect simulator (dashed). Depth helps in theory and hurts in practice.</p><svg id="noisechart" viewBox="0 0 420 300" role="img" aria-label="Approximation ratio vs depth, ideal and noisy"></svg></div>
   </div>
 </section>
@@ -258,11 +258,12 @@ button:disabled{opacity:.45;cursor:default}
   <h2 id="claims">What this shows and what it does not</h2>
   <div class="claims">
     <div><h3>Shows</h3><ul>
-      <li>Age, ejection fraction and serum creatinine beat all 11 measurements (MCC 0.430 vs 0.365, paired p = 1e-8).</li>
-      <li>QAOA's best sample is the true optimum in 59 of 60 runs at depth 2, and stays in the top 5 under realistic chip noise.</li>
-      <li>Greedy selection on the same score fails (MCC 0.225); judging panels jointly fixes it.</li></ul></div>
+      <li>QAOA samples the optimal three measurement panel about 27 times more often than picking panels at random (17 % of shots at depth 2 and 3), and about 46 times more often with interpolated starting angles.</li>
+      <li>Under a realistic chip noise model the optimum is still sampled in every run, and in a leakage free pipeline QAOA picks the same panel as brute force in 98 of 100 splits.</li>
+      <li>Greedy selection on the same score fails (MCC 0.225); judging panels jointly fixes it (0.430, corrected p = 0.004).</li></ul></div>
     <div><h3>Does not show</h3><ul>
       <li>Quantum advantage: classical simulated annealing solves this 11-variable problem perfectly in 0.3 s.</li>
+      <li>That 3 measurements beat all 11: MCC 0.430 vs 0.365 looks better, but with 299 patients the corrected p is 0.23.</li>
       <li>A clinical tool: 299 patients, one hospital; choosing panel size without peeking gives MCC 0.391.</li>
       <li>Real-hardware runs yet: the noise study uses IBM's calibration model of a real chip.</li></ul></div>
   </div>
@@ -572,9 +573,9 @@ drawCircuit(2);
 
 /* ================= 4. 2D charts ================= */
 const NS="http://www.w3.org/2000/svg";const el=(t,a={},p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e};
-const MCC=[["Age + EF + S. creatinine","QAOA · QUBO optimum",0.430,0.021,true],["EF + S. creatinine","QAOA · published panel",0.398,0.022,true],["Age + EF + S. creat. + Na","QAOA · 4-measurement",0.371,0.023,true],["All 11 measurements","reference",0.365,0.022,false],["EF + platelets + S. creatinine","RFE (classical)",0.362,0.023,false],["Anaemia + high BP + S. creatinine","greedy mRMR (classical)",0.225,0.022,false]];
-(function(){const svg=document.getElementById('mccchart'),L=215,R=500,top=14,rowH=44,x=v=>L+(R-L)*v/0.5;
-  for(let k=0;k<=5;k++){const v=k/10,xx=x(v);el('line',{x1:xx,y1:top-4,x2:xx,y2:top+rowH*MCC.length,stroke:'var(--rule)'},svg);el('text',{x:xx,y:top+rowH*MCC.length+16,'text-anchor':'middle',class:'soft'},svg).textContent=v.toFixed(1)}
+const MCC=[["Age + EF + S. creatinine","QAOA · QUBO optimum",0.430,0.108,true],["EF + S. creatinine","QAOA · published panel",0.398,0.116,true],["Age + EF + S. creat. + Na","QAOA · 4-measurement",0.371,0.122,true],["All 11 measurements","reference",0.365,0.114,false],["EF + platelets + S. creatinine","RFE (classical)",0.362,0.117,false],["Anaemia + high BP + S. creatinine","greedy mRMR (classical)",0.225,0.115,false]];
+(function(){const svg=document.getElementById('mccchart'),L=215,R=500,top=14,rowH=44,x=v=>L+(R-L)*v/0.6;
+  for(let k=0;k<=6;k++){const v=k/10,xx=x(v);el('line',{x1:xx,y1:top-4,x2:xx,y2:top+rowH*MCC.length,stroke:'var(--rule)'},svg);el('text',{x:xx,y:top+rowH*MCC.length+16,'text-anchor':'middle',class:'soft'},svg).textContent=v.toFixed(1)}
   MCC.forEach(([lab,src,m,ci,q],i)=>{const y=top+i*rowH;el('text',{x:L-8,y:y+16,'text-anchor':'end'},svg).textContent=lab;el('text',{x:L-8,y:y+30,'text-anchor':'end',class:'soft'},svg).textContent=src;
     el('rect',{x:L,y:y+8,width:(x(m)-L).toFixed(1),height:22,fill:q?'var(--quantum)':'var(--ink-soft)',rx:2},svg);el('line',{x1:x(m-ci),x2:x(m+ci),y1:y+19,y2:y+19,stroke:'var(--ink)','stroke-width':1.5},svg);el('text',{x:x(m+ci)+6,y:y+23},svg).textContent=m.toFixed(3)});
   el('text',{x:(L+R)/2,y:top+rowH*MCC.length+32,'text-anchor':'middle',class:'soft'},svg).textContent='MCC'})();
