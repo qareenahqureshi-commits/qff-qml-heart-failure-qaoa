@@ -79,6 +79,17 @@ button:disabled{opacity:.45;cursor:default}
 .pill{align-self:flex-start;font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid currentColor}
 .vitals{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:2px;font-family:var(--mono);font-size:.72rem;color:var(--ink-soft)}
 .vitals b{color:var(--ink);font-weight:500}
+.cohort{text-transform:none!important;letter-spacing:0!important}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.kpi{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi b{font-family:var(--mono);font-size:clamp(1.6rem,3.4vw,2.3rem);font-weight:500;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi span{font-size:.9rem;color:var(--ink-soft)}
+.why{font-size:.95rem;border-left:3px solid var(--quantum);padding-left:12px;max-width:none}
+.echo{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.echo .panel{font-family:var(--display);font-size:1.35rem;font-weight:700;line-height:1.2}
+.echo dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-family:var(--mono);font-size:.88rem}
+.echo dt{color:var(--ink-soft)}.echo dd{margin:0;font-variant-numeric:tabular-nums}
+@media (max-width:700px){.kpis,.echo{grid-template-columns:1fr}}
 .disclaim{font-size:.8rem;color:var(--ink-soft)}
 
 /* steps */
@@ -155,8 +166,8 @@ button:disabled{opacity:.45;cursor:default}
 <header class="hero">
   <div class="hero-left">
     <span class="eyebrow">Qiskit Fall Fest 2026 · Quantum ML for Healthcare</span>
-    <h1>Which three measurements predict heart-failure survival?</h1>
-    <p>A quantum algorithm picked them from eleven: <strong>age</strong>, <strong>ejection fraction</strong> and <strong>serum creatinine</strong>. Try them on this digital-twin patient.</p>
+    <h1>Three routine numbers to flag heart-failure risk.</h1>
+    <p>A quantum optimiser (QAOA, in Qiskit) picked <strong>age</strong>, <strong>ejection fraction</strong> and <strong>serum creatinine</strong> out of eleven hospital measurements. No echo machine? It picks a <strong>$4.57</strong> blood-test panel instead. Try the three on this digital-twin patient.</p>
     <div class="ctl"><label for="age">Age <b id="agev">60 years</b></label><input id="age" type="range" min="40" max="95" step="1" value="60"></div>
     <div class="ctl"><label for="ef">Ejection fraction <b id="efv">38 %</b></label><input id="ef" type="range" min="15" max="80" step="1" value="38"><small>Share of blood the heart pumps out per beat. Healthy is about 55–70 %.</small></div>
     <div class="ctl"><label for="sc">Serum creatinine <b id="scv">1.10 mg/dL</b></label><input id="sc" type="range" min="0.5" max="9.4" step="0.05" value="1.1"><small>Kidney marker. Normal is about 0.6–1.2; higher means weaker filtering.</small></div>
@@ -172,11 +183,32 @@ button:disabled{opacity:.45;cursor:default}
   <div class="stage" id="twinStage" aria-label="3D digital twin: beating heart, aorta with blood flow, and kidneys">
     <canvas id="twinCanvas"></canvas>
     <div class="vitals"><span>heart · <b id="vEF">38%</b> out per beat</span><span>flow · <b id="vFlow">—</b></span><span>kidneys · <b id="vSC">1.10</b> mg/dL</span></div>
-    <div class="riskcard" aria-live="polite"><span>Estimated risk of death</span><div id="riskval">—</div><span id="riskpill" class="pill">low</span></div>
+    <div class="riskcard" aria-live="polite"><span>Estimated risk of death</span><div id="riskval">—</div><span id="riskpill" class="pill">low</span><span class="cohort">cohort average 32 %</span></div>
     <canvas class="ecgstrip" id="ecgstrip" aria-hidden="true"></canvas>
     <div class="hint">drag to rotate · scroll the page as usual</div>
   </div>
 </header>
+
+<section class="kpis" aria-label="Headline results">
+  <div class="kpi"><b>3 of 11</b><span>routine measurements needed: age, ejection fraction, serum creatinine</span></div>
+  <div class="kpi"><b>10 / 10</b><span>QAOA runs (seeds) that found the true best panel, checked against brute force over all 165</span></div>
+  <div class="kpi"><b>$4.57</b><span>cost of the best panel when no echocardiogram is available (vs $202.42 with one)</span></div>
+</section>
+<p class="why"><strong>Why use a quantum optimiser here?</strong> Choosing a panel is a QUBO, the native input of QAOA. At 11 measurements brute force can check every answer, so this project proves the pipeline finds the right one. The point is panels drawn from 50 to 500 candidate markers, where brute force stops being possible. No quantum advantage is claimed at this size.</p>
+
+<section class="sheet" aria-labelledby="echoh">
+  <span class="eyebrow">Interactive · for clinics without an echo machine</span>
+  <h2 id="echoh">Is an echocardiogram available?</h2>
+  <p class="muted">Test prices are added to the same QUBO, so the optimiser trades prediction quality against cost. Ejection fraction needs an echo ($197.85, 2026 Medicare fee schedule, CPT 93306); creatinine and sodium come from one basic metabolic panel ($4.57, Florida Medicaid 2026 lab fee, CPT 80048); age is free.</p>
+  <div class="btns" role="group" aria-label="Echocardiogram available">
+    <button type="button" class="echobtn" data-echo="1" aria-pressed="true">Echo available</button>
+    <button type="button" class="echobtn" data-echo="0" aria-pressed="false">No echo</button>
+  </div>
+  <div class="echo" aria-live="polite">
+    <div><span class="eyebrow" style="color:var(--ink-soft)">Best 3-measurement panel</span><div class="panel" id="echoPanel"></div></div>
+    <dl><dt>cost</dt><dd id="echoCost"></dd><dt>MCC</dt><dd id="echoMcc"></dd><dt>vs full panel</dt><dd id="echoDelta"></dd><dt>QAOA</dt><dd>found it in 10 / 10 seeds</dd></dl>
+  </div>
+</section>
 
 <section class="sheet" aria-labelledby="idea">
   <span class="eyebrow">The idea, plainly</span>
@@ -592,5 +624,11 @@ const MCC=[["Age + EF + S. creatinine","QAOA · QUBO optimum",0.430,0.108,true],
 })();
 </script>
 
+<script>
+(()=>{const D={1:{p:'Age + ejection fraction + serum creatinine',c:'$202.42 (echo + metabolic panel)',m:'0.430 ± 0.108',d:'this is the full panel'},
+0:{p:'Age + serum creatinine + serum sodium',c:'$4.57 (one metabolic panel, 44× cheaper)',m:'0.317 ± 0.123',d:'−0.112, corrected p = 0.10 (not separable on 299 patients)'}};
+const bs=document.querySelectorAll('.echobtn');function set(e){const r=D[e];echoPanel.textContent=r.p;echoCost.textContent=r.c;echoMcc.textContent=r.m;echoDelta.textContent=r.d;bs.forEach(b=>b.setAttribute('aria-pressed',b.dataset.echo==e))}
+bs.forEach(b=>b.addEventListener('click',()=>set(b.dataset.echo)));set('1')})();
+</script>
 </body>
 </html>
