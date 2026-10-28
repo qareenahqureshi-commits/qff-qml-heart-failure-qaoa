@@ -2,7 +2,7 @@
 
 **KU QCI Qiskit Fall Fest 2026, Quantum Machine Learning for Healthcare track**
 
-**▶ HeartPanel, the live product prototype:** https://qareenahqureshi-commits.github.io/qff-qml-heart-failure-qaoa/ (patient worklist, clinical review, panel optimiser, clinic profiles, evidence, pilot and assurance pages). The **quantum engine** page ([`docs/engine.html`](docs/engine.html)) shows the 3D digital twin, the live QAOA register, the circuit and the landscape of all 165 panels. Worklist scores: `scripts/11_patient_risk.py`.
+**▶ HeartPanel, the live product prototype:** https://qareenahqureshi-commits.github.io/qff-qml-heart-failure-qaoa/ (landing page; the app at [`docs/app.html`](docs/app.html) has the patient worklist, clinical review, panel optimiser, clinic profiles, evidence, pilot and assurance pages). The **quantum engine** page ([`docs/engine.html`](docs/engine.html)) shows the 3D digital twin, the live QAOA register, the circuit and the landscape of all 165 panels. Worklist scores: `scripts/11_patient_risk.py`.
 
 ## Abstract
 

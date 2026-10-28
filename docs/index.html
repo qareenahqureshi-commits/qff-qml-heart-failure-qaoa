@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HeartPanel</title>
-<meta name="description" content="Quantum-optimised test panels for heart-failure risk: the cheapest tests that still predict death, tailored to what each clinic has.">
+<meta name="description" content="HeartPanel picks the cheapest routine tests that still predict death in heart failure, for the equipment each clinic has. Panels chosen by a quantum optimiser (QAOA, Qiskit).">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -26,316 +26,239 @@
   --ecg:#ff5a62; --quantum:#5cc2e3; --quantum-soft:#1b3340; --gold:#f0b94a;
   --sheet:#191d26; --stage:#10131a; --ok:#5fc48a; --warn:#e3a94a; --crit:#ff6b6b; color-scheme:dark}
 *{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.55;
-  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:20px 20px}
-h1,h2,h3{font-family:var(--display);line-height:1.08;margin:0;text-wrap:balance}
-h1{font-size:clamp(1.9rem,4.4vw,3.1rem);font-weight:800;letter-spacing:-.02em}
-h2{font-size:clamp(1.35rem,2.6vw,1.8rem);font-weight:700}
-h3{font-size:1.02rem;font-weight:700}
-p{margin:0;max-width:68ch}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6}
+h1,h2,h3{font-family:var(--display);line-height:1.05;margin:0;text-wrap:balance}
+p{margin:0}
 a{color:var(--quantum)}
-:focus-visible{outline:2px solid var(--quantum);outline-offset:2px}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--quantum);outline-offset:3px}
+.wrap{max-width:1160px;margin:0 auto;padding:0 max(16px,4vw)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ecg)}
 .muted{color:var(--ink-soft)}
-.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ecg)}
-.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
-.side{position:sticky;top:0;height:100vh;background:var(--sheet);border-right:1px solid var(--rule);padding:20px 14px;display:flex;flex-direction:column;gap:18px}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:1.25rem;text-decoration:none;color:var(--ink)}
-.brand svg{flex:none}
-.nav{display:flex;flex-direction:column;gap:2px}
-.nav a{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:.84rem;color:var(--ink);text-decoration:none;padding:8px 10px;border-radius:5px}
-.nav a:hover{background:var(--stage)}
-.nav a[aria-current="page"]{background:var(--ink);color:var(--sheet)}
-.nav .sep{font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);padding:12px 10px 4px}
-.badge{font-size:.68rem;background:var(--ecg);color:#fff;border-radius:99px;padding:0 7px}
-.side .foot{margin-top:auto;font-size:.74rem;color:var(--ink-soft);font-family:var(--mono)}
-main{padding:28px clamp(16px,3.4vw,44px) 64px;display:flex;flex-direction:column;gap:22px;min-width:0;max-width:1180px}
-.card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:clamp(14px,2.2vw,24px);display:flex;flex-direction:column;gap:12px;min-width:0}
-.grid{display:grid;gap:16px}
-.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
-.kpi b{display:block;font-family:var(--mono);font-weight:500;font-size:clamp(1.6rem,3vw,2.3rem);line-height:1.05;font-variant-numeric:tabular-nums}
-.kpi .lab{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
-.kpi span{font-size:.88rem;color:var(--ink-soft)}
-.pill{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.05em;text-transform:uppercase;padding:1px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
-.card .pill{align-self:flex-start}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.88rem;text-decoration:none;border-radius:6px;padding:11px 18px;border:1px solid var(--ink);color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--sheet)}
+.btn:hover{transform:translateY(-1px)}
+header.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:62px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:1.2rem;color:var(--ink);text-decoration:none}
+.links{display:flex;gap:22px;align-items:center;font-family:var(--mono);font-size:.82rem}
+.links a{color:var(--ink);text-decoration:none}
+.links a.btn{padding:8px 14px}
+.hero{position:relative;overflow:hidden;padding:clamp(48px,9vw,110px) 0 clamp(40px,6vw,72px);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(24px,4vw,56px);align-items:center}
+.hero h1{font-size:clamp(2.4rem,6.4vw,4.6rem);font-weight:800;letter-spacing:-.03em}
+.hero h1 em{font-style:normal;color:var(--ecg)}
+.hero .lede{font-size:clamp(1.05rem,1.6vw,1.22rem);max-width:34em;margin-top:18px}
+.hero .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.hero .note{margin-top:18px;font-family:var(--mono);font-size:.76rem;color:var(--ink-soft)}
+.ecg{position:absolute;left:0;right:0;bottom:0;height:90px;opacity:.5;pointer-events:none}
+.ecg path{stroke:var(--ecg);stroke-width:2;fill:none;stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 5s linear infinite}
+@keyframes draw{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.ecg path{animation:none;stroke-dashoffset:0}}
+.mock{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;box-shadow:0 24px 60px rgba(28,34,48,.14);overflow:hidden;font-size:.84rem}
+.mock .bar{display:flex;gap:6px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--rule);background:var(--stage);font-family:var(--mono);font-size:.72rem;color:var(--ink-soft)}
+.mock .bar i{width:9px;height:9px;border-radius:50%;background:var(--rule);display:inline-block}
+.mock .body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.mock .kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mock .kp div{border:1px solid var(--rule);border-radius:8px;padding:8px 10px}
+.mock .kp b{display:block;font-family:var(--mono);font-weight:500;font-size:1.25rem}
+.mock .kp span{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.mock table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.74rem}
+.mock td,.mock th{padding:6px 6px;border-bottom:1px solid var(--rule);text-align:left}
+.mock th{font-weight:500;color:var(--ink-soft);font-size:.64rem;text-transform:uppercase;letter-spacing:.06em}
+.pill{display:inline-block;font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;padding:0 7px;border-radius:99px;border:1px solid currentColor}
 .high{color:var(--crit)}.medium{color:var(--warn)}.low{color:var(--ok)}
-.q{color:var(--quantum)}
-button,select,input,textarea{font-family:var(--mono);font-size:.82rem;color:var(--ink)}
-button{border:1px solid var(--ink);background:transparent;border-radius:5px;padding:7px 12px;cursor:pointer}
-button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
-button.primary{background:var(--ink);color:var(--sheet)}
-select,input[type=search],input[type=text],textarea{background:var(--sheet);border:1px solid var(--rule);border-radius:5px;padding:7px 10px}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:8px;background:var(--sheet)}
-table{border-collapse:collapse;width:100%;font-size:.88rem}
-th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
-th{font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;background:var(--stage);position:sticky;top:0}
-td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
-tbody tr{cursor:pointer}tbody tr:hover{background:var(--stage)}
-.bar{height:8px;border-radius:4px;background:var(--stage);overflow:hidden;min-width:70px}
-.bar i{display:block;height:100%}
-.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.step{border-top:2px solid var(--rule);padding-top:10px;display:flex;flex-direction:column;gap:4px}
-.step .n{font-family:var(--mono);font-size:.74rem;color:var(--ecg)}
-.step p{font-size:.92rem}
-.callout{border-left:3px solid var(--quantum);padding:6px 0 6px 14px;font-size:.95rem}
-.trust{display:flex;gap:12px;align-items:flex-start;background:var(--stage);border-radius:8px;padding:14px 16px;font-size:.92rem}
-dl.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0;font-size:.92rem}
-dl.kv dt{font-family:var(--mono);font-size:.78rem;color:var(--ink-soft);padding-top:2px}
-dl.kv dd{margin:0}
-figure{margin:0;display:flex;flex-direction:column;gap:8px}
-figure img{width:100%;height:auto;border:1px solid var(--rule);border-radius:6px;background:#fff}
-figcaption{font-size:.88rem;color:var(--ink-soft)}
-ul.tight{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
-.audit{display:flex;flex-direction:column;gap:8px;font-size:.88rem}
-.audit div{border-left:2px solid var(--rule);padding-left:10px}
-.cmp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.riskbig{font-family:var(--mono);font-size:2.2rem;line-height:1}
-.mobilenav{display:none}
+.meter{height:6px;border-radius:3px;background:var(--stage);overflow:hidden;width:70px}.meter i{display:block;height:100%}
+section{padding:clamp(48px,7vw,88px) 0}
+section.alt{background:var(--sheet);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.head{display:flex;flex-direction:column;gap:12px;max-width:720px;margin-bottom:34px}
+.head h2{font-size:clamp(1.8rem,3.6vw,2.7rem);font-weight:800;letter-spacing:-.02em}
+.head p{font-size:1.06rem;color:var(--ink-soft)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--rule);border-radius:12px;background:var(--sheet);overflow:hidden}
+.stats div{padding:22px 22px;border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:6px}
+.stats div:last-child{border-right:0}
+.stats b{font-family:var(--mono);font-weight:500;font-size:clamp(1.8rem,3.4vw,2.6rem);line-height:1}
+.stats span{font-size:.92rem;color:var(--ink-soft)}
+.problem{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.pcard{border:1px solid var(--rule);border-radius:12px;padding:24px;background:var(--paper);display:flex;flex-direction:column;gap:10px}
+.pcard .price{font-family:var(--mono);font-size:2rem}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;counter-reset:s}
+.step{display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--ink);padding-top:14px}
+.step .n{font-family:var(--mono);font-size:.78rem;color:var(--ecg)}
+.step h3{font-size:1.2rem}
+.step p{font-size:.95rem;color:var(--ink-soft)}
+.clinics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.ccard{border:1px solid var(--rule);border-radius:12px;padding:22px;background:var(--sheet);display:flex;flex-direction:column;gap:10px}
+.ccard .tag{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.ccard .panel{font-family:var(--display);font-weight:700;font-size:1.1rem}
+.ccard dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-family:var(--mono);font-size:.84rem}
+.ccard dt{color:var(--ink-soft)}.ccard dd{margin:0}
+.quantum{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:center}
+.quantum ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:10px}
+.qviz{background:var(--stage);border:1px solid var(--rule);border-radius:12px;padding:18px}
+.honest{border-left:3px solid var(--quantum);padding:4px 0 4px 16px;margin-top:20px;font-size:.98rem}
+.evidence{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:24px;align-items:start}
+.evidence img{width:100%;height:auto;border:1px solid var(--rule);border-radius:10px;background:#fff}
+.checks{display:flex;flex-direction:column;gap:0;border:1px solid var(--rule);border-radius:12px;overflow:hidden;background:var(--sheet)}
+.checks div{display:flex;justify-content:space-between;gap:14px;padding:12px 16px;border-bottom:1px solid var(--rule);font-size:.92rem}
+.checks div:last-child{border-bottom:0}
+.checks b{font-family:var(--mono);font-weight:500;white-space:nowrap}
+.trust{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.trust div{display:flex;flex-direction:column;gap:8px}
+.cta{text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px}
+.cta h2{font-size:clamp(2rem,4.6vw,3.2rem);font-weight:800;letter-spacing:-.02em}
+footer{border-top:1px solid var(--rule);padding:28px 0;font-family:var(--mono);font-size:.78rem;color:var(--ink-soft)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
 @media (max-width:900px){
-  .app{grid-template-columns:minmax(0,1fr)}
-  .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule);padding:12px 16px;gap:10px}
-  .nav{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}
-  .nav a{white-space:nowrap}.nav .sep,.side .foot{display:none}
-  .g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero .wrap,.quantum,.evidence{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats div:nth-child(2){border-right:0}.stats div:nth-child(-n+2){border-bottom:1px solid var(--rule)}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}.clinics,.trust{grid-template-columns:minmax(0,1fr)}
+  .links a:not(.btn){display:none}
 }
-@media (max-width:900px){.g2.opt{grid-template-columns:1fr}}
-@media (max-width:560px){.g2,.g3,.g4,.steps,.cmp{grid-template-columns:1fr}}
+@media (max-width:560px){.problem,.steps{grid-template-columns:minmax(0,1fr)}.mock .kp{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 </head>
 <body>
-<div class="app">
-<aside class="side">
-  <a class="brand" href="#home"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 23S3 16.6 3 9.6A5.1 5.1 0 0 1 13 7.4a5.1 5.1 0 0 1 10 2.2C23 16.6 13 23 13 23Z" fill="none" stroke="var(--ecg)" stroke-width="2"/><path d="M5 13h4l2-4 3 7 2-3h5" fill="none" stroke="var(--quantum)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>HeartPanel</a>
-  <nav class="nav" aria-label="Main">
-    <a href="#home">Home</a>
-    <a href="#patients">Patients <span class="badge" id="navBadge"></span></a>
-    <a href="#optimiser">Panel optimiser</a>
-    <a href="#clinics">Clinic profiles</a>
-    <span class="sep">Trust</span>
-    <a href="#evidence">Evidence</a>
-    <a href="#pilot">Pilot</a>
-    <a href="#assurance">Assurance</a>
-    <span class="sep">Under the hood</span>
-    <a href="engine.html">Quantum engine ↗</a>
-  </nav>
-  <div class="foot">Qiskit Fall Fest 2026<br>QML for Healthcare</div>
-</aside>
-<main id="view" tabindex="-1" aria-live="polite"><p class="muted">Loading…</p></main>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 23S3 16.6 3 9.6A5.1 5.1 0 0 1 13 7.4a5.1 5.1 0 0 1 10 2.2C23 16.6 13 23 13 23Z" fill="none" stroke="var(--ecg)" stroke-width="2"/><path d="M5 13h4l2-4 3 7 2-3h5" fill="none" stroke="var(--quantum)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>HeartPanel</a>
+  <nav class="links" aria-label="Page"><a href="#how">How it works</a><a href="#quantum">Quantum</a><a href="#evidence">Evidence</a><a href="engine.html">Engine</a><a class="btn primary" href="app.html">Open the app</a></nav>
+</div></header>
+
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Heart-failure risk · resource-aware · quantum-optimised</span>
+      <h1>Right tests.<br>Right clinic.<br><em>Right patients.</em></h1>
+      <p class="lede">HeartPanel finds the cheapest set of routine tests that still predicts death in heart failure, for the equipment each clinic actually has. Then it ranks every patient for a clinician to review.</p>
+      <div class="ctas"><a class="btn primary" href="app.html">Open the worklist →</a><a class="btn" href="app.html#optimiser">Choose a panel for my clinic</a></div>
+      <p class="note">Research prototype · 299 real, de-identified patients · not a diagnostic tool</p>
+    </div>
+    <div class="mock" aria-label="Preview of the HeartPanel worklist">
+      <div class="bar"><i></i><i></i><i></i><span style="margin-left:8px">HeartPanel · Patients</span></div>
+      <div class="body">
+        <div class="kp"><div><span>High risk</span><b class="high">84</b></div><div><span>Medium</span><b class="medium">56</b></div><div><span>Low</span><b class="low">159</b></div></div>
+        <table id="mockRows"><thead><tr><th>Patient</th><th>Age</th><th>EF %</th><th>Risk</th><th></th><th>Band</th></tr></thead><tbody></tbody></table>
+        <span class="muted mono" style="font-size:.7rem">Panel: age + ejection fraction + serum creatinine · chosen by QAOA</span>
+      </div>
+    </div>
+  </div>
+  <svg class="ecg" viewBox="0 0 1400 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60 H260 l14 -6 10 6 H340 l10 -48 12 74 10 -26 H520 l14 -6 10 6 H700 l10 -48 12 74 10 -26 H880 l14 -6 10 6 H1060 l10 -48 12 74 10 -26 H1400"/></svg>
 </div>
 
+<div class="wrap" style="margin-top:-28px;position:relative">
+  <div class="stats" aria-label="Headline numbers">
+    <div><b>3 of 11</b><span>routine measurements are enough: age, ejection fraction, serum creatinine</span></div>
+    <div><b>80 / 96</b><span>deaths flagged for review with the 3-test panel</span></div>
+    <div><b>$4.57</b><span>the best panel without an echo machine, 44× cheaper</span></div>
+    <div><b style="color:var(--quantum)">10 / 10</b><span>QAOA runs that found the true best panel, checked by brute force</span></div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">The problem</span><h2>Most risk tools assume a hospital that has everything.</h2><p>The strongest heart-failure marker, ejection fraction, needs an echocardiogram: a machine and a trained sonographer. Many clinics have neither, but they all have a blood test.</p></div>
+    <div class="problem">
+      <div class="pcard"><span class="eyebrow" style="color:var(--ink-soft)">Echocardiogram</span><div class="price">$197.85</div><p class="muted">per patient (2026 Medicare fee schedule). Needs equipment and a specialist.</p></div>
+      <div class="pcard"><span class="eyebrow" style="color:var(--ink-soft)">Basic metabolic panel</span><div class="price">$4.57</div><p class="muted">per patient (2026 Florida Medicaid lab fee). Gives creatinine and sodium from one blood draw.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="how">
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">How it works</span><h2>From the tests you have to a reviewed patient.</h2></div>
+    <div class="steps">
+      <div class="step"><span class="n">01 · clinic</span><h3>Say what you have</h3><p>Echo machine? Lab? HeartPanel uses your real test prices.</p></div>
+      <div class="step"><span class="n">02 · quantum</span><h3>Optimise the panel</h3><p>Choosing tests is a QUBO. QAOA finds the most informative, least redundant set that fits.</p></div>
+      <div class="step"><span class="n">03 · score</span><h3>Rank every patient</h3><p>Each patient gets a risk and a band: high, medium or low.</p></div>
+      <div class="step"><span class="n">04 · review</span><h3>A clinician decides</h3><p>Named reviewer, a decision and a note, all on record.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">Built for every clinic</span><h2>The same patients, the best panel each site can run.</h2></div>
+    <div class="clinics">
+      <div class="ccard"><span class="tag">Tertiary cardiology · echo + lab</span><div class="panel">Age + ejection fraction + serum creatinine</div><dl><dt>cost</dt><dd>$202.42</dd><dt>MCC</dt><dd>0.430 ± 0.108</dd><dt>deaths flagged</dt><dd>80 of 96</dd></dl></div>
+      <div class="ccard"><span class="tag">District hospital · lab only</span><div class="panel">Age + serum creatinine + serum sodium</div><dl><dt>cost</dt><dd>$4.57</dd><dt>MCC</dt><dd>0.317 ± 0.123</dd><dt>deaths flagged</dt><dd>66 of 96</dd></dl></div>
+      <div class="ccard"><span class="tag">Community screening · history only</span><div class="panel">Not supported yet</div><p class="muted" style="font-size:.92rem">Every optimum needs serum creatinine. We recommend adding one $4.57 blood test rather than guessing.</p></div>
+    </div>
+    <p class="muted" style="margin-top:18px;font-size:.92rem">With 299 patients, the gap between the echo and no-echo panels is not statistically significant (corrected p = 0.10), so a lab-only clinic still gets a usable tool.</p>
+  </div>
+</section>
+
+<section class="alt" id="quantum">
+  <div class="wrap quantum">
+    <div>
+      <div class="head" style="margin-bottom:20px"><span class="eyebrow" style="color:var(--quantum)">The quantum engine</span><h2>Panel selection is a QUBO. QAOA solves it.</h2></div>
+      <ul>
+        <li>One qubit per candidate measurement. The score rewards tests that separate deaths from survivors and penalises overlap between them; test prices are exact extra terms.</li>
+        <li>QAOA in Qiskit, 11 qubits, depth 1 to 3, 2000 shots. With INTERP starting angles, 28 % of shots are the optimal panel: 46 times random.</li>
+        <li>On a simulated IBM Heron chip with real calibration noise, depth p = 1 works best, so that is what we run on hardware.</li>
+      </ul>
+      <p class="honest"><strong>Why quantum, honestly.</strong> At 11 measurements brute force can check every answer, and QAOA matched it in every run. That check is what lets us trust it on 50 to 500 candidate markers, where brute force is impossible. We do not claim quantum advantage at 11: simulated annealing solves it in 0.3 s.</p>
+      <div style="margin-top:22px"><a class="btn" href="engine.html">Explore the engine: 3D twin, qubit register, circuit →</a></div>
+    </div>
+    <div class="qviz"><svg id="qsvg" viewBox="0 0 400 320" role="img" aria-label="Eleven qubits, one per measurement, with the three selected highlighted" style="width:100%;height:auto"></svg></div>
+  </div>
+</section>
+
+<section id="evidence">
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">Evidence</span><h2>Measured on real patients, not illustrated.</h2><p>Compared on identical data, splits and metrics against exhaustive search, simulated annealing, tabu search, random sampling and the classical methods practitioners use.</p></div>
+    <div class="evidence">
+      <img src="figures/downstream_mcc.png" alt="Prediction quality (MCC) of every panel with corrected 95 % intervals" loading="lazy">
+      <div class="checks">
+        <div><span>QAOA vs brute force</span><b>10/10 seeds</b></div>
+        <div><span>Best panel, MCC</span><b>0.430</b></div>
+        <div><span>All 11 features</span><b>0.365</b></div>
+        <div><span>Greedy mRMR (beaten, p = 0.004)</span><b>0.225</b></div>
+        <div><span>Leakage-free nested CV</span><b>0.391</b></div>
+        <div><span>Worklist AUC, echo / no echo</span><b>0.82 / 0.72</b></div>
+        <div><span>QAOA picks brute-force panel in nested CV</span><b>98/100</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">Trust</span><h2>AI assists. Clinicians decide.</h2></div>
+    <div class="trust">
+      <div><h3>Honest about limits</h3><p class="muted">One hospital, 299 patients, retrospective. On this sample the best panel is statistically level with all 11 features. No real-hardware run yet. All stated up front.</p></div>
+      <div><h3>Open and reproducible</h3><p class="muted">Every number comes from committed code and results. One command regenerates every table and figure.</p></div>
+      <div><h3>Private by design</h3><p class="muted">Public, de-identified data (CC BY 4.0). Review notes stay in the reviewer's browser. HeartPanel never changes a record.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap cta">
+    <span class="eyebrow">Try it</span>
+    <h2>See which patients your clinic should review first.</h2>
+    <div class="ctas" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center"><a class="btn primary" href="app.html">Open HeartPanel →</a><a class="btn" href="https://github.com/qareenahqureshi-commits/qff-qml-heart-failure-qaoa">Code and write-up on GitHub</a></div>
+  </div>
+</section>
+
+<footer><div class="wrap">
+  <span>HeartPanel · KU QCI Qiskit Fall Fest 2026 · Quantum Machine Learning for Healthcare</span>
+  <span>Kareena Mueenuddin · Dawud Dajani</span>
+  <span>Data: UCI Heart Failure Clinical Records (Chicco &amp; Jurman 2020) · QUBO: Mücke et al. 2023</span>
+</div></footer>
+
 <script>
-const $=(s,r=document)=>r.querySelector(s), esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const pct=x=>(100*x).toFixed(0)+' %';
-/* Cost-aware QUBO optima (results/cost_panels.csv). MCC: random forest, 100 splits, 95 % CI corrected for overlapping splits. */
-const PANELS=[
- {k:2,echo:false,f:['High blood pressure','Serum creatinine'],cost:4.57,mcc:.2329,ci:.1268},
- {k:2,echo:true, f:['Ejection fraction','Serum creatinine'],cost:202.42,mcc:.3979,ci:.1158},
- {k:3,echo:false,f:['Age','Serum creatinine','Serum sodium'],cost:4.57,mcc:.3174,ci:.1227},
- {k:3,echo:true, f:['Age','Ejection fraction','Serum creatinine'],cost:202.42,mcc:.4296,ci:.1078},
- {k:4,echo:false,f:['Age','High blood pressure','Serum creatinine','Serum sodium'],cost:4.57,mcc:.3095,ci:.1126},
- {k:4,echo:true, f:['Age','Ejection fraction','Serum creatinine','Serum sodium'],cost:202.42,mcc:.3709,ci:.1215}];
-const TESTS={'Ejection fraction':'Echocardiogram (CPT 93306) $197.85','Serum creatinine':'Basic metabolic panel (CPT 80048) $4.57','Serum sodium':'Basic metabolic panel (CPT 80048) $4.57','Age':'History, free','High blood pressure':'History and exam, free'};
-let D=null, panelKey='echo';
-const REV_KEY='heartpanel-reviews-v1';
-function reviews(){try{return JSON.parse(localStorage.getItem(REV_KEY)||'{}')}catch(e){return{}}}
-function saveReview(id,entry){const r=reviews();(r[id]=r[id]||[]).push(entry);try{localStorage.setItem(REV_KEY,JSON.stringify(r))}catch(e){}return r}
-const band=r=>r>=D.bands[1]?'high':r>=D.bands[0]?'medium':'low';
-const riskOf=(p,k=panelKey)=>p[k==='echo'?'risk_echo':'risk_no_echo'];
-const S=k=>D.summary.find(s=>s.panel===k);
-function pill(r){const b=band(r);return `<span class="pill ${b}">${b}</span>`}
-function bar(r){const b=band(r);return `<div class="bar" aria-hidden="true"><i style="width:${(100*r).toFixed(0)}%;background:var(--${b==='high'?'crit':b==='medium'?'warn':'ok'})"></i></div>`}
-function lastReview(id){const r=reviews()[id];return r&&r.length?r[r.length-1]:null}
-function trust(){return `<div class="trust"><strong>AI assists. Clinicians decide.</strong><span class="muted">HeartPanel ranks patients for review. It does not diagnose, change records or replace clinical judgement. Research prototype on a public, de-identified dataset.</span></div>`}
-function panelToggle(){return `<div class="row" role="group" aria-label="Scoring panel"><span class="muted mono" style="font-size:.8rem">Scoring panel</span>
- <button data-panel="echo" aria-pressed="${panelKey==='echo'}">With echo · $202.42</button><button data-panel="no_echo" aria-pressed="${panelKey==='no_echo'}">No echo · $4.57</button></div>`}
-function wirePanel(rerender){document.querySelectorAll('[data-panel]').forEach(b=>b.onclick=()=>{panelKey=b.dataset.panel;rerender()})}
-function unreviewedHigh(){return D.patients.filter(p=>band(riskOf(p))==='high'&&!lastReview(p.patient)).length}
-
-const V={};
-V.home=()=>{const e=S('echo'),n=S('no_echo');
- const top=[...D.patients].filter(p=>!lastReview(p.patient)).sort((a,b)=>riskOf(b)-riskOf(a)).slice(0,6);
- return `<section class="card" style="gap:16px">
-  <span class="eyebrow">Heart-failure risk · resource-aware</span>
-  <h1>Right tests, right clinic, right patients.</h1>
-  <p>HeartPanel finds the cheapest set of routine tests that still predicts death in heart failure, for the equipment each clinic actually has. It then scores every patient with that panel and queues the riskiest for clinical review. A quantum optimiser (QAOA, Qiskit) chooses the panel.</p>
-  <div class="row"><a href="#patients"><button class="primary">Open the worklist</button></a><a href="#optimiser"><button>Choose a panel for my clinic</button></a></div>
- </section>
- <section class="grid g4" aria-label="Headline numbers">
-  <div class="card kpi"><span class="lab">Patients scored</span><b>${D.patients.length}</b><span>real, de-identified records; each scored by a model that never saw them</span></div>
-  <div class="card kpi"><span class="lab">Deaths flagged · echo panel</span><b>${e.deaths_flagged}/${e.deaths}</b><span>3 tests, $202.42 per patient, AUC ${e.roc_auc.toFixed(2)}</span></div>
-  <div class="card kpi"><span class="lab">Deaths flagged · no echo</span><b>${n.deaths_flagged}/${n.deaths}</b><span>one $4.57 blood test, 44× cheaper, AUC ${n.roc_auc.toFixed(2)}</span></div>
-  <div class="card kpi"><span class="lab q">Quantum check</span><b class="q">10/10</b><span>QAOA runs that found the true best panel, verified by brute force over all 165</span></div>
- </section>
- <section class="card"><span class="eyebrow">How it works</span><h2>From the tests you have to a reviewed patient</h2>
-  <div class="steps">
-   <div class="step"><span class="n">1 · clinic</span><h3>Say what you have</h3><p>Echo machine? Lab? Budget per patient? <a href="#clinics">Clinic profiles</a></p></div>
-   <div class="step"><span class="n">2 · quantum</span><h3>Optimise the panel</h3><p>Panel choice is a QUBO. QAOA picks the most informative, least redundant tests that fit. <a href="#optimiser">Panel optimiser</a></p></div>
-   <div class="step"><span class="n">3 · score</span><h3>Rank patients</h3><p>Every patient gets a risk from that panel and a band: high, medium, low. <a href="#patients">Patients</a></p></div>
-   <div class="step"><span class="n">4 · review</span><h3>A clinician decides</h3><p>Named reviewer, a decision and a note, all on record. Nothing changes without them.</p></div>
-  </div></section>
- <section class="card"><div class="row" style="justify-content:space-between"><div><span class="eyebrow">Needs review</span><h2>Top of the worklist</h2></div>${panelToggle()}</div>
-  <div class="tablewrap"><table><thead><tr><th>Patient</th><th>Age</th><th>EF %</th><th>Creatinine</th><th>Risk</th><th></th><th>Band</th></tr></thead><tbody>
-  ${top.map(p=>`<tr data-id="${p.patient}"><td class="mono">#${String(p.patient).padStart(3,'0')}</td><td class="num">${p.age}</td><td class="num">${p.ejection_fraction}</td><td class="num">${p.serum_creatinine.toFixed(2)}</td><td class="num">${pct(riskOf(p))}</td><td>${bar(riskOf(p))}</td><td>${pill(riskOf(p))}</td></tr>`).join('')}
-  </tbody></table></div><a href="#patients">See all ${D.patients.length} patients →</a></section>
- ${trust()}`};
-V.home.after=()=>{wireRows();wirePanel(render)};
-
-let filt={band:'all',q:'',sort:'risk'};
-V.patients=()=>{let ps=D.patients.filter(p=>(filt.band==='all'||band(riskOf(p))===filt.band)&&(!filt.q||String(p.patient).includes(filt.q.replace('#','').replace(/^0+/,''))));
- const k=filt.sort; ps=[...ps].sort((a,b)=>k==='risk'?riskOf(b)-riskOf(a):k==='id'?a.patient-b.patient:k==='age'?b.age-a.age:a.ejection_fraction-b.ejection_fraction);
- const cnt=b=>D.patients.filter(p=>band(riskOf(p))===b).length;
- return `<section class="row" style="justify-content:space-between;align-items:flex-end"><div><span class="eyebrow">Worklist</span><h1>Patients</h1><p class="muted">${D.patients.length} heart-failure patients (Faisalabad Institute of Cardiology, 2015). The outcome column is what actually happened in follow-up, shown because this is a retrospective dataset.</p></div>${panelToggle()}</section>
- <section class="grid g3">${['high','medium','low'].map(b=>`<button class="card kpi" style="text-align:left;cursor:pointer;border-color:${filt.band===b?'var(--ink)':'var(--rule)'}" data-band="${b}"><span class="lab ${b}">${b} risk</span><b>${cnt(b)}</b><span>${b==='high'?'≥ 50 %':b==='medium'?'25 to 50 %':'< 25 %'} estimated risk of death</span></button>`).join('')}</section>
- <section class="row"><input type="search" id="q" placeholder="Find patient #" value="${esc(filt.q)}" aria-label="Find patient by number" style="width:160px">
-  <select id="bandSel" aria-label="Filter by band"><option value="all">All bands</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
-  <select id="sortSel" aria-label="Sort"><option value="risk">Sort: risk</option><option value="age">Sort: age</option><option value="ef">Sort: lowest EF</option><option value="id">Sort: patient #</option></select>
-  <span class="muted mono" style="font-size:.8rem">${ps.length} shown</span></section>
- <div class="tablewrap"><table><thead><tr><th>Patient</th><th>Age</th><th>Sex</th><th>EF %</th><th>Creatinine</th><th>Sodium</th><th>Risk</th><th></th><th>Band</th><th>Review</th><th>Outcome</th></tr></thead><tbody>
- ${ps.map(p=>{const r=riskOf(p),lr=lastReview(p.patient);return `<tr data-id="${p.patient}"><td class="mono">#${String(p.patient).padStart(3,'0')}</td><td class="num">${p.age}</td><td>${p.sex?'M':'F'}</td><td class="num">${p.ejection_fraction}</td><td class="num">${p.serum_creatinine.toFixed(2)}</td><td class="num">${p.serum_sodium}</td><td class="num">${pct(r)}</td><td>${bar(r)}</td><td>${pill(r)}</td><td>${lr?esc(lr.decision):'<span class="muted">pending</span>'}</td><td class="muted">${p.died?'died':'survived'}</td></tr>`}).join('')}
- </tbody></table></div>`};
-V.patients.after=()=>{wireRows();wirePanel(render);
- $('#bandSel').value=filt.band;$('#sortSel').value=filt.sort;
- document.querySelectorAll('[data-band]').forEach(b=>b.onclick=()=>{filt.band=filt.band===b.dataset.band?'all':b.dataset.band;render()});
- $('#bandSel').onchange=e=>{filt.band=e.target.value;render()};$('#sortSel').onchange=e=>{filt.sort=e.target.value;render()};
- $('#q').oninput=e=>{filt.q=e.target.value;const pos=e.target.selectionStart;render();const q=$('#q');q.focus();q.setSelectionRange(pos,pos)}};
-
-function flag(v,lo,hi){return v<lo?'<span class="pill high">low</span>':v>hi?'<span class="pill high">high</span>':'<span class="pill low">normal</span>'}
-V.patient=id=>{const p=D.patients.find(x=>x.patient===+id);if(!p)return `<p>No patient #${esc(id)}. <a href="#patients">Back to worklist</a></p>`;
- const re=p.risk_echo,rn=p.risk_no_echo,hist=reviews()[p.patient]||[];
- return `<a href="#patients" class="mono" style="font-size:.84rem">← Worklist</a>
- <section class="row" style="justify-content:space-between;align-items:flex-end"><div><span class="eyebrow">Clinical review</span><h1>Patient #${String(p.patient).padStart(3,'0')}</h1><p class="muted">${p.age}-year-old ${p.sex?'man':'woman'}${p.diabetes?' · diabetes':''}${p.high_blood_pressure?' · high blood pressure':''}${p.anaemia?' · anaemia':''}${p.smoking?' · smoker':''}</p></div>
- <a href="engine.html?age=${Math.min(95,Math.max(40,p.age))}&ef=${Math.min(80,Math.max(15,p.ejection_fraction))}&sc=${Math.min(9.4,Math.max(.5,p.serum_creatinine))}"><button>Open 3D digital twin ↗</button></a></section>
- <section class="cmp">
-  <div class="card"><span class="eyebrow" style="color:var(--ink-soft)">With echo · $202.42</span><div class="riskbig ${band(re)}">${pct(re)}</div>${pill(re)}<span class="muted" style="font-size:.86rem">Age + ejection fraction + serum creatinine</span></div>
-  <div class="card"><span class="eyebrow" style="color:var(--ink-soft)">No echo · $4.57</span><div class="riskbig ${band(rn)}">${pct(rn)}</div>${pill(rn)}<span class="muted" style="font-size:.86rem">Age + serum creatinine + serum sodium</span></div>
- </section>
- <section class="grid g2">
-  <div class="card"><h3>Panel measurements</h3><dl class="kv">
-   <dt>Age</dt><dd>${p.age} years</dd>
-   <dt>Ejection fraction</dt><dd>${p.ejection_fraction} % ${flag(p.ejection_fraction,55,70)} <span class="muted">healthy 55 to 70</span></dd>
-   <dt>Serum creatinine</dt><dd>${p.serum_creatinine.toFixed(2)} mg/dL ${flag(p.serum_creatinine,.6,1.2)} <span class="muted">normal 0.6 to 1.2</span></dd>
-   <dt>Serum sodium</dt><dd>${p.serum_sodium} mEq/L ${flag(p.serum_sodium,135,145)} <span class="muted">normal 135 to 145</span></dd>
-   <dt>Observed outcome</dt><dd>${p.died?'Died':'Survived'} during ${p.time}-day follow-up <span class="muted">(retrospective data)</span></dd></dl>
-   <p class="muted" style="font-size:.84rem">Risk is the share of random-forest votes for death, averaged over 10 repeats of 5-fold cross-validation in which this patient was held out.</p></div>
-  <div class="card"><h3>Review decision</h3>
-   <div class="row" role="group" aria-label="Decision" id="dec"><button data-d="No action">No action</button><button data-d="Follow-up visit">Follow-up visit</button><button data-d="Escalate to cardiology">Escalate</button></div>
-   <input type="text" id="who" placeholder="Reviewer name" aria-label="Reviewer name">
-   <textarea id="note" rows="3" placeholder="Clinical note" aria-label="Clinical note"></textarea>
-   <button class="primary" id="save" disabled>Record decision</button>
-   <div class="audit" id="audit">${hist.length?hist.slice().reverse().map(h=>`<div><b>${esc(h.decision)}</b> · ${esc(h.who||'unnamed')} · <span class="muted mono">${esc(h.at)}</span>${h.note?`<br>${esc(h.note)}`:''}</div>`).join(''):'<span class="muted">No decisions yet. Saved in this browser only.</span>'}</div></div>
- </section>${trust()}`};
-V.patient.after=id=>{let d=null;const btns=document.querySelectorAll('#dec button');
- btns.forEach(b=>b.onclick=()=>{d=b.dataset.d;btns.forEach(x=>x.setAttribute('aria-pressed',x===b));$('#save').disabled=false});
- $('#save').onclick=()=>{saveReview(+id,{decision:d,who:$('#who').value.trim(),note:$('#note').value.trim(),at:new Date().toLocaleString()});updateBadge();render()}};
-
-let opt={echo:true,lab:true,k:3};
-V.optimiser=()=>{const k3e=PANELS.find(x=>x.k===3&&x.echo);
- const res=!opt.lab?null:PANELS.find(x=>x.k===opt.k&&x.echo===opt.echo);
- const maxM=.55,W=560,rowH=36;
- const chart=`<svg viewBox="0 0 ${W} ${PANELS.length*rowH+30}" role="img" aria-label="MCC of each cost-aware optimum" style="width:100%;height:auto">
-  ${PANELS.map((x,i)=>{const y=i*rowH+8,on=res&&x===res,xs=v=>200+v/maxM*(W-260);return `<text x="0" y="${y+15}" font-family="IBM Plex Mono,monospace" font-size="13" fill="var(--${on?'ink':'ink-soft'})">k=${x.k} · ${x.echo?'echo':'no echo'} · $${x.cost.toFixed(2)}</text>
-   <rect x="200" y="${y+4}" width="${xs(x.mcc)-200}" height="14" rx="3" fill="var(--${x.echo?'quantum':'gold'})" opacity="${on?1:.35}"/>
-   <line x1="${xs(x.mcc-x.ci)}" x2="${xs(Math.min(maxM,x.mcc+x.ci))}" y1="${y+11}" y2="${y+11}" stroke="var(--ink)" stroke-width="1"/>
-   <text x="${xs(Math.min(maxM,x.mcc+x.ci))+4}" y="${y+15}" font-family="IBM Plex Mono,monospace" font-size="13" fill="var(--ink)">${x.mcc.toFixed(3)}</text>`}).join('')}
-  <text x="200" y="${PANELS.length*rowH+24}" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--ink-soft)">MCC (random forest, 100 splits, corrected 95 % CI)</text></svg>`;
- return `<section><span class="eyebrow">Quantum core</span><h1>Panel optimiser</h1><p class="muted">Tell HeartPanel what your clinic can measure. Test prices are exact terms in the same QUBO that QAOA solves, so it trades prediction quality against cost and redundancy in one objective.</p></section>
- <section class="card"><h3>Your clinic</h3>
-  <div class="row" role="group" aria-label="Echocardiogram"><span class="mono muted" style="width:170px;font-size:.8rem">Echocardiogram</span><button data-o="echo" data-v="1" aria-pressed="${opt.echo}">Available</button><button data-o="echo" data-v="0" aria-pressed="${!opt.echo}">Not available</button></div>
-  <div class="row" role="group" aria-label="Basic metabolic panel"><span class="mono muted" style="width:170px;font-size:.8rem">Basic metabolic panel</span><button data-o="lab" data-v="1" aria-pressed="${opt.lab}">Available</button><button data-o="lab" data-v="0" aria-pressed="${!opt.lab}">Not available</button></div>
-  <div class="row" role="group" aria-label="Panel size"><span class="mono muted" style="width:170px;font-size:.8rem">Measurements in panel</span>${[2,3,4].map(k=>`<button data-o="k" data-v="${k}" aria-pressed="${opt.k===k}">${k}</button>`).join('')}</div></section>
- <section class="grid g2 opt">
-  <div class="card" aria-live="polite">${res?`<span class="eyebrow" style="color:var(--ink-soft)">Optimal panel</span>
-   <h2>${res.f.join(' + ')}</h2>
-   <dl class="kv"><dt>tests to order</dt><dd>${[...new Set(res.f.map(f=>TESTS[f]))].join('<br>')}</dd>
-   <dt>cost per patient</dt><dd class="mono">$${res.cost.toFixed(2)}</dd>
-   <dt>MCC</dt><dd class="mono">${res.mcc.toFixed(3)} ± ${res.ci.toFixed(3)}</dd>
-   <dt>vs best panel</dt><dd>${res===k3e?'this is the best panel overall':`${(res.mcc-k3e.mcc).toFixed(3)} MCC vs age + EF + creatinine`}</dd>
-   <dt class="q">QAOA</dt><dd>found this optimum in 10 of 10 seeds (XY mixer keeps the panel size fixed)</dd></dl>
-   <a href="engine.html#regh"><button>Watch the QAOA run ↗</button></a>`
-   :`<span class="eyebrow" style="color:var(--ink-soft)">No supported panel</span><h2>A creatinine test is needed</h2><p>Every optimum the QUBO found, at every budget, includes serum creatinine. Without a basic metabolic panel HeartPanel does not recommend a panel yet. The cheapest supported option is one $4.57 blood test.</p>`}</div>
-  <div class="card"><h3>All cost-aware optima</h3>${chart}<p class="muted" style="font-size:.84rem">Blue needs an echo, gold does not. With 299 patients, panels within about 0.1 MCC of each other are not statistically separable.</p></div>
- </section>
- <section class="callout"><strong>Why a quantum optimiser?</strong> With 11 candidate measurements there are only 2,048 subsets, so brute force can check QAOA's answer, and it matched in every run. That check is the point. Real clinics have 50 to 500 candidate markers (full lab panels, vitals, EHR fields), where brute force is impossible. No quantum advantage is claimed at 11; simulated annealing also solves it, in 0.3 s.</section>`};
-V.optimiser.after=()=>document.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const o=b.dataset.o,v=+b.dataset.v;opt[o]=o==='k'?v:!!v;render()});
-
-V.clinics=()=>{const e=S('echo'),n=S('no_echo');
- const card=(t,sub,has,panel,cost,mcc,flagged,extra)=>`<div class="card"><span class="eyebrow" style="color:var(--ink-soft)">${sub}</span><h2>${t}</h2><p class="muted" style="font-size:.9rem">${has}</p>
-  ${panel?`<dl class="kv"><dt>panel</dt><dd><b>${panel}</b></dd><dt>cost / patient</dt><dd class="mono">$${cost.toFixed(2)}</dd><dt>per 1,000 patients</dt><dd class="mono">$${(cost*1000).toLocaleString('en-US',{maximumFractionDigits:0})}</dd><dt>MCC</dt><dd class="mono">${mcc}</dd><dt>deaths flagged</dt><dd class="mono">${flagged}</dd></dl>`:''}${extra||''}</div>`;
- return `<section><span class="eyebrow">Regional and resource settings</span><h1>Clinic profiles</h1><p class="muted">The same patients, three kinds of clinic. HeartPanel gives each the best panel it can actually run. Prices are 2026 US schedules (Medicare for the echo, Florida Medicaid for labs); swap in local prices and the optimiser re-solves.</p></section>
- <section class="grid g3">
-  ${card('Tertiary cardiology','Echo + lab','Echocardiography on site, full lab.','Age + ejection fraction + serum creatinine',202.42,'0.430 ± 0.108',`${e.deaths_flagged} of ${e.deaths}`)}
-  ${card('District hospital','Lab only','Routine bloods, no echo machine or sonographer.','Age + serum creatinine + serum sodium',4.57,'0.317 ± 0.123',`${n.deaths_flagged} of ${n.deaths}`)}
-  ${card('Community screening','History only','Questions and a blood-pressure cuff, no lab.',null,0,0,0,`<p><span class="pill medium">not supported yet</span></p><p style="font-size:.92rem">Every optimum needs serum creatinine. The honest recommendation is to add one $4.57 basic metabolic panel, which moves this site to the district profile.</p>`)}
- </section>
- <section class="card"><h3>What the echo buys</h3><p>Going from the district panel to the tertiary panel costs $197.85 more per patient. On these 299 patients it flags ${e.deaths_flagged-n.deaths_flagged} more of the ${e.deaths} deaths (${e.deaths_flagged} vs ${n.deaths_flagged}) and ${n.survivors_flagged-e.survivors_flagged} fewer survivors (${e.survivors_flagged} vs ${n.survivors_flagged}) at the 25 % review threshold. The MCC difference is not statistically significant on 299 patients (corrected p = 0.10), so a lab-only clinic is not left without a usable tool.</p></section>
- ${trust()}`};
-
-const FIG=[['downstream_mcc.png','Prediction quality of every panel, 100 splits, corrected 95 % intervals. The QAOA panel is the best tested; against all 11 features (p = 0.23) and the published 2-feature panel (p = 0.57) it is level on 299 patients, and it beats greedy mRMR (p = 0.004).'],
- ['p_optimum_vs_depth.png','How often QAOA samples the optimal panel, by circuit depth. 10 to 17 % of shots at k = 3, 17 to 28 times random; 28 % (46 times random) with INTERP starting angles.'],
- ['noise_fake_torino.png','Under an IBM Heron noise model deeper circuits get worse; p = 1 is the depth to run on hardware. The optimum is still sampled in all 93 noisy runs.'],
- ['cost_tradeoff.png','Cost-aware QUBO: as the price weight rises, the optimum drops the $197.85 echo for a $4.57 blood-test panel.'],
- ['nested_k_selection.png','Leakage-free check: choosing panel size inside nested cross-validation gives test MCC 0.391, and QAOA picks the same final panel as brute force in 98 of 100 splits.'],
- ['qaoa_variants.png','QAOA upgrades compared: CVaR objective, INTERP starting angles and a Dicke-state XY mixer. INTERP helps most.']];
-V.evidence=()=>`<section><span class="eyebrow">Measured, not illustrative</span><h1>Evidence</h1><p class="muted">Every number in HeartPanel comes from committed results in the <a href="https://github.com/qareenahqureshi-commits/qff-qml-heart-failure-qaoa">repository</a>, compared on identical data, splits and metrics against exhaustive search, simulated annealing, tabu search, random sampling and the classical methods practitioners use.</p></section>
- <section class="tablewrap"><table><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody style="cursor:auto">
-  <tr><td>QAOA vs brute force (k = 3)</td><td>optimum found in 10/10 seeds at every depth</td></tr>
-  <tr><td>Best panel, MCC</td><td class="mono">0.430 ± 0.108 (age + EF + creatinine)</td></tr>
-  <tr><td>Published 2-feature panel / all 11</td><td class="mono">0.398 / 0.365 (level: p = 0.57 / 0.23)</td></tr>
-  <tr><td>Greedy mRMR, same score</td><td class="mono">0.225 (beaten, p = 0.004)</td></tr>
-  <tr><td>Leakage-free nested CV</td><td class="mono">0.391 ± 0.111</td></tr>
-  <tr><td>Worklist AUC, echo / no echo</td><td class="mono">${S('echo').roc_auc.toFixed(2)} / ${S('no_echo').roc_auc.toFixed(2)} (out-of-fold, 299 patients)</td></tr>
-  <tr><td>QAOA vs classical heuristics</td><td>approximation ratio 0.86 to 0.91 vs 1.00 for annealing and tabu: no advantage at 11 variables</td></tr>
- </tbody></table></section>
- <section class="grid g2">${FIG.map(([f,c])=>`<figure class="card"><img src="figures/${f}" alt="${esc(c)}" loading="lazy"><figcaption>${c}</figcaption></figure>`).join('')}</section>`;
-
-V.pilot=()=>`<section><span class="eyebrow">From prototype to clinic</span><h1>Pilot</h1><p class="muted">A proposed three-phase pilot with a partner hospital. Nothing here has been run with a partner yet.</p></section>
- <section class="grid g3">
-  <div class="card"><span class="eyebrow">Phase 1</span><h2>Retrospective check</h2><p>Run the open pipeline on the partner's own de-identified heart-failure records, with local test prices. Does the chosen panel hold up on their population?</p><p class="muted" style="font-size:.88rem">Needs: a CSV export, a local price list. Output: the Evidence page, recomputed for their site.</p></div>
-  <div class="card"><span class="eyebrow">Phase 2</span><h2>Shadow worklist</h2><p>HeartPanel ranks current patients in the background. Clinicians record decisions as usual; nothing reaches patient care. Compare who HeartPanel flagged with what clinicians did and what happened.</p><p class="muted" style="font-size:.88rem">Needs: a named clinical lead and ethics approval.</p></div>
-  <div class="card"><span class="eyebrow q">Phase 3</span><h2 class="q">Scale the engine</h2><p>Open the candidate list to the site's full lab panel, vitals and EHR fields: 50 to 500 markers, far past brute force. Run QAOA on IBM quantum hardware at depth p = 1, which the noise study picked.</p><p class="muted" style="font-size:.88rem">Ready: <code>scripts/10_hardware.py</code>, one Sampler job. Not run yet: no hardware allocation during the event.</p></div>
- </section>
- <section class="card"><h3>What success looks like</h3><ul class="tight"><li>The chosen panel's MCC on the partner's data falls inside the interval we report here.</li><li>In shadow mode, the high-risk band catches deaths that a standard review missed, without flooding clinicians.</li><li>At 50+ markers, QAOA's panels match or beat classical heuristics on the same QUBO. That is the open research question, and we say so.</li></ul></section>`;
-
-V.assurance=()=>`<section><span class="eyebrow">Trust and safety</span><h1>Assurance</h1><p class="muted">What HeartPanel is, what it is not, and how to check every claim.</p></section>
- ${trust()}
- <section class="grid g2">
-  <div class="card"><h3>Model card</h3><dl class="kv">
-   <dt>task</dt><dd>Rank heart-failure patients by estimated risk of death during follow-up</dd>
-   <dt>inputs</dt><dd>3 routine measurements chosen by QAOA (with or without echo)</dd>
-   <dt>model</dt><dd>Random forest, 500 trees</dd>
-   <dt>validation</dt><dd>100 stratified 80/20 splits; nested CV for panel size; out-of-fold scores for the worklist</dd>
-   <dt>intended use</dt><dd>Research and pilot evaluation; ordering patients for clinician review</dd>
-   <dt>not for</dt><dd>Diagnosis, treatment decisions, or use without clinical review</dd></dl></div>
-  <div class="card"><h3>Data card</h3><dl class="kv">
-   <dt>source</dt><dd>UCI Heart Failure Clinical Records (Ahmad et al. 2017; Chicco &amp; Jurman 2020), CC BY 4.0</dd>
-   <dt>patients</dt><dd>299 (Faisalabad Institute of Cardiology, 2015), 96 deaths</dd>
-   <dt>privacy</dt><dd>Public, de-identified. Review notes are stored only in your browser.</dd>
-   <dt>prices</dt><dd>2026 US fee schedules, illustrative; replace with local prices</dd></dl></div>
- </section>
- <section class="grid g2">
-  <div class="card"><h3>Limitations we state up front</h3><ul class="tight">
-   <li>No quantum advantage at 11 measurements: simulated annealing solves it in 0.3 s.</li>
-   <li>One hospital, 299 patients, retrospective. External validation is Phase 1 of the pilot.</li>
-   <li>On 299 patients the best panel is statistically level with all 11 features and with the published panel.</li>
-   <li>Real-hardware run not done yet; the noise study uses IBM's calibration model of a real chip.</li></ul></div>
-  <div class="card"><h3>Reproducibility</h3><ul class="tight">
-   <li>All code, data and results are open: <a href="https://github.com/qareenahqureshi-commits/qff-qml-heart-failure-qaoa">github.com/qareenahqureshi-commits/qff-qml-heart-failure-qaoa</a></li>
-   <li><code>make all</code> regenerates every table and figure; <code>scripts/11_patient_risk.py</code> regenerates this worklist.</li>
-   <li>Unit tests: 13 passed (4 more need Qiskit installed).</li>
-   <li>QUBO: Mücke et al. 2023. Baseline: Chicco &amp; Jurman 2020.</li></ul></div>
- </section>`;
-
-function wireRows(){document.querySelectorAll('tr[data-id]').forEach(r=>r.onclick=()=>location.hash='#patient/'+r.dataset.id)}
-function updateBadge(){const n=unreviewedHigh();$('#navBadge').textContent=n?n:''}
-function render(){const [route,arg]=(location.hash.slice(1)||'home').split('/');const v=V[route]||V.home;
- $('#view').innerHTML=v(arg);v.after&&v.after(arg);
- document.querySelectorAll('.nav a').forEach(a=>a.getAttribute('href')==='#'+(route==='patient'?'patients':route)?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
- document.title=route==='home'?'HeartPanel':'HeartPanel · '+(route==='patient'?'Patient #'+arg:route[0].toUpperCase()+route.slice(1));updateBadge()}
-let lastRoute='';
-addEventListener('hashchange',()=>{render();const r=location.hash.split('/')[0];if(r!==lastRoute){scrollTo(0,0);$('#view').focus({preventScroll:true})}lastRoute=r});
-fetch('data/patients.json').then(r=>r.json()).then(d=>{D=d;lastRoute=location.hash.split('/')[0];render()}).catch(()=>{$('#view').innerHTML='<p>Could not load patient data.</p>'});
+fetch('data/patients.json').then(r=>r.json()).then(d=>{const b=r=>r>=.5?'high':r>=.25?'medium':'low',c={high:'crit',medium:'warn',low:'ok'};
+ document.querySelector('#mockRows tbody').innerHTML=[...d.patients].sort((a,b)=>b.risk_echo-a.risk_echo).filter((p,i)=>i%9===0).slice(0,6).map(p=>{const r=p.risk_echo,k=b(r);
+ return `<tr><td>#${String(p.patient).padStart(3,'0')}</td><td>${p.age}</td><td>${p.ejection_fraction}</td><td>${Math.round(100*r)} %</td><td><div class="meter"><i style="width:${Math.round(100*r)}%;background:var(--${c[k]})"></i></div></td><td><span class="pill ${k}">${k}</span></td></tr>`}).join('')}).catch(()=>{});
+(()=>{const names=['Age','Anaemia','CPK','Diabetes','Ejection frac.','High BP','Platelets','S. creatinine','S. sodium','Sex','Smoking'],sel=new Set([0,4,7]),s=document.getElementById('qsvg'),cx=200,cy=160,R=120;
+ const pts=names.map((n,i)=>{const a=-Math.PI/2+i*2*Math.PI/11;return[cx+R*Math.cos(a),cy+R*Math.sin(a)]});let h='';
+ for(let i=0;i<11;i++)for(let j=i+1;j<11;j++){const on=sel.has(i)&&sel.has(j);h+=`<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[j][0]}" y2="${pts[j][1]}" stroke="var(--${on?'ecg':'rule'})" stroke-width="${on?2:.6}" opacity="${on?.9:.7}"/>`}
+ pts.forEach(([x,y],i)=>{const on=sel.has(i),a=-Math.PI/2+i*2*Math.PI/11,lx=cx+(R+26)*Math.cos(a),ly=cy+(R+26)*Math.sin(a);
+  h+=`<circle cx="${x}" cy="${y}" r="${on?13:9}" fill="var(--${on?'ecg':'sheet'})" stroke="var(--${on?'ecg':'quantum'})" stroke-width="2"/><text x="${x}" y="${y+4}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="var(--${on?'sheet':'quantum'})">q${i}</text><text x="${lx}" y="${ly+4}" text-anchor="${Math.cos(a)>.2?'start':Math.cos(a)<-.2?'end':'middle'}" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--${on?'ecg':'ink-soft'})">${names[i]}</text>`});
+ h+=`<text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Bricolage Grotesque,sans-serif" font-weight="700" font-size="15" fill="var(--ink)">11 qubits</text><text x="${cx}" y="${cy+14}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--ink-soft)">3 selected by QAOA</text>`;s.innerHTML=h})();
 </script>
 </body>
 </html>
